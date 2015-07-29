@@ -1,61 +1,267 @@
 ---
 layout: post
-title:  "Welcome to Jekyll!"
+title:  "storm编程指南"
 date:   2015-07-17 15:13:20
 categories: jekyll update
 ---
 
  
 
- 参考：
-
- 英文：https://spark.apache.org/docs/latest/programming-guide.html
-
- 中文：http://www.cnblogs.com/lujinhong2/p/4651025.html 1.2.1版本的
-
-  
-
-  （一）快速入门
-
-  老规矩，先看一个简单示例，有个认识。这个示例来自官方example的SparkPi：
-
-  package org.lujinhong.demo.spark
-
-  /*
-   * 官方的sparkPi示例
-    */
-
-    import scala.math.random
-
-    import org.apache.spark._
-
-    /** Computes an approximation to pi */
-    object SparkPi {
-        def main(args: Array[String]) {
-                val conf = new SparkConf().setAppName("Spark Pi").setMaster("local")
-                val spark = new SparkContext(conf)
-                val slices = if (args.length > 0) args(0).toInt else 2
-                val n = math.min(100000L * slices, Int.MaxValue).toInt // avoid overflow
-                val count = spark.parallelize(1 until n, slices).map { i =>
-                                                                           val x = random * 2 - 1
-                                                                           val y = random * 2 - 1
-                                                                           if (x*x + y*y < 1) 1 else 0
-                                                                         }.reduce(_ + _)
-                println("Pi is roughly " + 4.0 * count / n)
-                spark.stop()
-              
-        }
 
 
+[toc]
+
+本文介绍了storm的基本编程，关于trident的编程，请见？？？
+
+本示例使用storm运行经典的wordcount程序，拓扑如下：
+sentence-spout—>split-bolt—>count-bolt—>report-bolt
+分别完成句子的产生、拆分出单词、单词数量统计、统计结果输出
+完整代码请见 https://github.com/jinhong-lu/stormdemo
+以下是关键代码的分析。
+
+##（一）创建spout
+```
+public class SentenceSpout extends BaseRichSpout {
+    private SpoutOutputCollector collector;
+    private int index = 0;
+    private String[] sentences = { "when i was young i'd listen to the radio",
+            "waiting for my favorite songs", "when they played i'd sing along",
+            "it make me smile",
+            "those were such happy times and not so long ago",
+            "how i wondered where they'd gone",
+            "but they're back again just like a long lost friend",
+            "all the songs i love so well", "every shalala every wo'wo",
+            "still shines.", "every shing-a-ling-a-ling",
+            "that they're starting", "to sing so fine"};
+
+    public void open(Map conf, TopologyContext context,
+            SpoutOutputCollector collector) {
+        this.collector = collector;
     }
-    注意以上的setMaster(“local”)是自己加上去的，方便直接在本地运行。如果在集群上运行，则通过spark-submit的—master参数指定。
 
-    写好代码后，就可以直接在eclipse中右键—>运行了。
+    public void declareOutputFields(OutputFieldsDeclarer declarer) {
+        declarer.declare(new Fields("sentence"));
+    }
 
-     
+    public void nextTuple() {
+        this.collector.emit(new Values(sentences[index]));
+        index++;
+        if (index >= sentences.length) {
+            index = 0;
+        }
+        try {
+            Thread.sleep(1);
+        } catch (InterruptedException e) {
+            //e.printStackTrace();
+        }
+    }
+}
+```
 
-      
+上述类中，将string数组中内容逐行发送出去，主要的方法有：
+（1）open()方法完成spout的初始化工作，与bolt的prepare()方法类似
+（2）declareOutputFileds()定义了发送内容的字段名称与字段数量，bolt中的方法名称一样。
+（3）nextTuple()方法是对每一个需要处理的数据均会执行的操作，也bolt的executor()方法类似。它是整个逻辑处理的核心，通过emit()方法将数据发送到拓扑中的下一个节点。
 
+##（二）创建split-bolt
+```
+public class SplitSentenceBolt extends BaseRichBolt{
+    private OutputCollector collector;
+
+    public void prepare(Map stormConf, TopologyContext context,
+            OutputCollector collector) {
+        this.collector = collector;
+    }
+    
+    public void declareOutputFields(OutputFieldsDeclarer declarer) {
+        declarer.declare(new Fields("word"));
+    }
+
+    public void execute(Tuple input) {
+        String sentence = input.getStringByField("sentence");
+        String[] words = sentence.split(" ");
+        for(String word : words){
+            this.collector.emit(new Values(word));
+            //System.out.println(word);
+        }
+    }
+}
+```
+
+三个方法的含义与spout类似，这个类根据空格把收到的句子进行拆分，拆成一个一个的单词，然后把单词逐个发送出去。
+input.getStringByField("sentence”)可以根据上一节点发送的关键字获取到相应的内容。
+
+##（三）创建wordcount-bolt
+```
+public class WordCountBolt extends BaseRichBolt{
+    private OutputCollector collector;
+    private Map<String,Long> counts = null;
+
+    public void prepare(Map stormConf, TopologyContext context,
+            OutputCollector collector) {
+        this.collector = collector;
+        this.counts = new HashMap<String, Long>();
+    }
+    public void declareOutputFields(OutputFieldsDeclarer declarer) {
+        declarer.declare(new Fields("word","count"));
+    }
+
+    public void execute(Tuple input) {
+        String word = input.getStringByField("word");
+        Long count = this.counts.get(word);
+        if(count == null){
+            count = 0L;
+        }
+        count++;
+        this.counts.put(word, count);
+        this.collector.emit(new Values(word,count));
+        //System.out.println(count);
+    }
+}
+```
+
+本类将接收到的word进行数量统计，并把结果发送出去。
+这个bolt发送了2个filed：
+```
+        declarer.declare(new Fields("word","count"));
+        this.collector.emit(new Values(word,count));
+```
+##（四）创建report-bolt
+```
+public class ReportBolt extends BaseRichBolt{
+    private Map<String, Long> counts;
+
+    public void prepare(Map stormConf, TopologyContext context,
+            OutputCollector collector) {
+        this.counts = new HashMap<String,Long>();
+    }
+    public void declareOutputFields(OutputFieldsDeclarer declarer) {
+        
+    }
+
+    public void execute(Tuple input) {
+        String word = input.getStringByField("word");
+        Long count = input.getLongByField("count");
+        counts.put(word, count);
+    }
+
+    public void cleanup() {
+        System.out.println("Final output");
+        Iterator<Entry<String, Long>> iter = counts.entrySet().iterator();
+        while (iter.hasNext()) {
+            Entry<String, Long> entry = iter.next();
+            String word = (String) entry.getKey();
+            Long count = (Long) entry.getValue();
+            System.out.println(word + " : " + count);
+        }
+        
+        super.cleanup();
+    }    
+    
+}
+```
+
+
+本类将从wordcount-bolt接收到的数据进行输出。
+先将结果放到一个map中，当topo被关闭时，会调用cleanup()方法，此时将map中的内容输出。
+
+##（五）创建topo
+```
+public class WordCountTopology {
+    private static final String SENTENCE_SPOUT_ID = "sentence-spout";
+    private static final String SPLIT_BOLT_ID = "split-bolt";
+    private static final String COUNT_BOLT_ID = "count-bolt";
+    private static final String REPORT_BOLT_ID = "report-bolt";
+    private static final String TOPOLOGY_NAME = "word-count-topology";
+
+    public static void main(String[] args) {
+        SentenceSpout spout = new SentenceSpout();
+        SplitSentenceBolt splitBolt = new SplitSentenceBolt();
+        WordCountBolt countBolt = new WordCountBolt();
+        ReportBolt reportBolt = new ReportBolt();
+
+        TopologyBuilder builder = new TopologyBuilder();
+
+        builder.setSpout(SENTENCE_SPOUT_ID, spout);
+        builder.setBolt(SPLIT_BOLT_ID, splitBolt).shuffleGrouping(
+                SENTENCE_SPOUT_ID);
+        builder.setBolt(COUNT_BOLT_ID, countBolt).fieldsGrouping(SPLIT_BOLT_ID,
+                new Fields("word"));
+        builder.setBolt(REPORT_BOLT_ID, reportBolt).globalGrouping(
+                COUNT_BOLT_ID);
+
+        Config conf = new Config();
+
+        if (args.length == 0) {
+            LocalCluster cluster = new LocalCluster();
+
+            cluster.submitTopology(TOPOLOGY_NAME, conf,
+                    builder.createTopology());
+            try {
+                Thread.sleep(10000);
+            } catch (InterruptedException e) {
+            }
+            cluster.killTopology(TOPOLOGY_NAME);
+            cluster.shutdown();
+        } else {
+            try {
+                StormSubmitter.submitTopology(args[0], conf,builder.createTopology());
+            } catch (AlreadyAliveException e) {
+                e.printStackTrace();
+            } catch (InvalidTopologyException e) {
+                e.printStackTrace();
+            }
+
+        }
+    }
+}
+```
+
+关键步骤为：
+（1）创建TopologyBuilder，并为这个builder指定spout与bolt
+```
+        builder.setSpout(SENTENCE_SPOUT_ID, spout);
+        builder.setBolt(SPLIT_BOLT_ID, splitBolt).shuffleGrouping(
+                SENTENCE_SPOUT_ID);
+        builder.setBolt(COUNT_BOLT_ID, countBolt).fieldsGrouping(SPLIT_BOLT_ID,
+                new Fields("word"));
+        builder.setBolt(REPORT_BOLT_ID, reportBolt).globalGrouping(
+                COUNT_BOLT_ID);
+               
+```
+(2)创建conf对象
+```
+    Config conf = new Config();
+```
+这个对象用于指定一些与拓扑相关的属性，如并行度、nimbus地址等。
+(3)创建并运行拓扑，这里使用了2种方式
+一是当没有参数时，建立一个localcluster，在本地上直接运行，运行10秒后，关闭集群：
+```
+LocalCluster cluster = new LocalCluster();
+cluster.submitTopology(TOPOLOGY_NAME, conf,builder.createTopology());
+Thread.sleep(10000);
+cluster.killTopology(TOPOLOGY_NAME);
+cluster.shutdown();
+```
+二是有参数是，将拓扑提交到集群中：
+```
+StormSubmitter.submitTopology(args[0], conf,builder.createTopology());
+```
+第一个参数为拓扑的名称。
+
+6、本地运行
+直接在eclipse中运行即可，输出结果在console中看到
+
+7、集群运行
+（1）编译并打包
+```
+mvn clean compile
+```
+（2）把编译好的jar包上传到nimbus机器上，然后
+```
+storm jar com.ljh.storm.5_stormdemo  com.ljh.storm.wordcount.WordCountTopology  topology_name
+```
+将拓扑提交到集群中。
        
 
         
