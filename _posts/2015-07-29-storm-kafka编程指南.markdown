@@ -40,7 +40,7 @@ new ZkHosts("192.168.172.117:2181,192.168.172.98:2181,192.168.172.111:2181,192.1
 ```
 默认情况下，每60秒去读取一次kafka的分区信息，可以通过修改host.refreshFreqSecs来设置。
 
-（3）除了使用ZkHosts来读取分析信息外，storm-kafka还提供了一种静态指定的方法（不推荐此方法），如：
+（3）除了使用ZkHosts来读取分析信息外，storm-kafka还提供了一种静态指定的方法（不推荐此方法），如
 ```
     Broker brokerForPartition0 = new Broker("localhost");//localhost:9092
     
@@ -58,7 +58,7 @@ new ZkHosts("192.168.172.117:2181,192.168.172.98:2181,192.168.172.111:2181,192.1
     
     StaticHosts hosts = new StaticHosts(partitionInfo);
 ```
- 由此可以看出，ZkHosts完成的功能就是指定了从哪个kafka节点读取某个topic的哪个分区。
+由此可以看出，ZkHosts完成的功能就是指定了从哪个kafka节点读取某个topic的哪个分区。
  
 ###2、创建KafkaConfig
 (1)有2种方式创建KafkaConfig
