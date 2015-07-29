@@ -21,6 +21,7 @@ sentence-spout—>split-bolt—>count-bolt—>report-bolt
 
 ##（一）创建spout
 ```
+
 public class SentenceSpout extends BaseRichSpout {
     private SpoutOutputCollector collector;
     private int index = 0;
