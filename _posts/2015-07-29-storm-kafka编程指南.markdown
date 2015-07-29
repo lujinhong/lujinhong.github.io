@@ -1,18 +1,34 @@
-#storm-kafka编程指南
+---
+layout: post
+title:  "Welcome to Jekyll!"
+date:   2015-07-17 15:13:20
+categories: jekyll update
+---
 
-@(博客文章)[kafka|大数据|storm]
+
+
 
 [toc]
+
 #一、原理及关键步骤介绍
+
 storm中的storm-kafka组件提供了storm与kafka交互的所需的所有功能，请参考其官方文档：https://github.com/apache/storm/tree/master/external/storm-kafka#brokerhosts
+
 ##（一）使用storm-kafka的关键步骤
+
 ###1、创建ZkHosts
+
 当storm从kafka中读取某个topic的消息时，需要知道这个topic有多少个分区，以及这些分区放在哪个kafka节点(broker)上，ZkHosts就是用于这个功能。
+
 创建zkHosts有2种形式
+
 ```
-   public ZkHosts(String brokerZkStr, String brokerZkPath) 
-   public ZkHosts(String brokerZkStr)
+
+public ZkHosts(String brokerZkStr, String brokerZkPath) 
+   
+public ZkHosts(String brokerZkStr)
 ```
+
    
 （1）默认情况下，zk信息被放到/brokers中，此时可以使用第2种方式：
 new ZkHosts("192.168.172.117:2181,192.168.172.98:2181,192.168.172.111:2181,192.168.172.114:2181,192.168.172.116:2181”);
@@ -26,18 +42,25 @@ new ZkHosts("192.168.172.117:2181,192.168.172.98:2181,192.168.172.111:2181,192.1
 ```
 默认情况下，每60秒去读取一次kafka的分区信息，可以通过修改host.refreshFreqSecs来设置。
 
-（3）除了使用ZkHosts来读取分析信息外，storm-kafka还提供了一种静态指定的方法（不推荐此方法），如：
+（3）除了使用ZkHosts来读取分析信息外，storm-kafka还提供了一种静态指定的方法（不推荐此方法），如
 ```
     Broker brokerForPartition0 = new Broker("localhost");//localhost:9092
+    
     Broker brokerForPartition1 = new Broker("localhost", 9092);//localhost:9092 but we specified the port explicitly
+    
     Broker brokerForPartition2 = new Broker("localhost:9092");//localhost:9092 specified as one string.
+    
     GlobalPartitionInformation partitionInfo = new GlobalPartitionInformation();
+    
     partitionInfo.addPartition(0, brokerForPartition0);//mapping form partition 0 to brokerForPartition0
+    
     partitionInfo.addPartition(1, brokerForPartition1);//mapping form partition 1 to brokerForPartition1
+    
     partitionInfo.addPartition(2, brokerForPartition2);//mapping form partition 2 to brokerForPartition2
+    
     StaticHosts hosts = new StaticHosts(partitionInfo);
 ```
- 由此可以看出，ZkHosts完成的功能就是指定了从哪个kafka节点读取某个topic的哪个分区。
+由此可以看出，ZkHosts完成的功能就是指定了从哪个kafka节点读取某个topic的哪个分区。
  
 ###2、创建KafkaConfig
 (1)有2种方式创建KafkaConfig
