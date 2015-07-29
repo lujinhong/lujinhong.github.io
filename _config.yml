@@ -9,6 +9,5 @@ github_username:  lujinhong
 
 
 # Build settings
-markdown: kramdown
-redcarpet: 
-extensions: ['fenced_code_blocks']
+#markdown: kramdown
+
