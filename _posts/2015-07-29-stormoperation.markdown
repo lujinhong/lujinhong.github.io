@@ -5,11 +5,10 @@ date:   2015-07-29 15:13:20
 categories: jekyll update
 ---
 
-#storm集群操作指南
 
-@(博客文章)[storm|大数据]
 
  [toc]
+ 
 #一、storm伪分布式安装
 ##（一）环境准备
 1、OS：debian 7
