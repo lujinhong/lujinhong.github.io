@@ -1,6 +1,12 @@
-#storm-kafka编程指南
+---
+layout: post
+title:  "Welcome to Jekyll!"
+date:   2015-07-17 15:13:20
+categories: jekyll update
+---
 
-@(博客文章)[kafka|大数据|storm]
+
+
 
 [toc]
 #一、原理及关键步骤介绍
