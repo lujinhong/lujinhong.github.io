@@ -34,16 +34,13 @@ public class SentenceSpout extends BaseRichSpout {
             "all the songs i love so well", "every shalala every wo'wo",
             "still shines.", "every shing-a-ling-a-ling",
             "that they're starting", "to sing so fine"};
-
     public void open(Map conf, TopologyContext context,
             SpoutOutputCollector collector) {
         this.collector = collector;
     }
-
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declare(new Fields("sentence"));
     }
-
     public void nextTuple() {
         this.collector.emit(new Values(sentences[index]));
         index++;
