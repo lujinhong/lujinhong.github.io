@@ -10,15 +10,25 @@ categories: jekyll update
 
 [toc]
 #一、原理及关键步骤介绍
+
 storm中的storm-kafka组件提供了storm与kafka交互的所需的所有功能，请参考其官方文档：https://github.com/apache/storm/tree/master/external/storm-kafka#brokerhosts
+
 ##（一）使用storm-kafka的关键步骤
+
 ###1、创建ZkHosts
+
 当storm从kafka中读取某个topic的消息时，需要知道这个topic有多少个分区，以及这些分区放在哪个kafka节点(broker)上，ZkHosts就是用于这个功能。
+
 创建zkHosts有2种形式
+
 ```
+
    public ZkHosts(String brokerZkStr, String brokerZkPath) 
+   
    public ZkHosts(String brokerZkStr)
+   
 ```
+
    
 （1）默认情况下，zk信息被放到/brokers中，此时可以使用第2种方式：
 new ZkHosts("192.168.172.117:2181,192.168.172.98:2181,192.168.172.111:2181,192.168.172.114:2181,192.168.172.116:2181”);
