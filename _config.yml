@@ -9,15 +9,7 @@ github_username:  lujinhong
 
 
 # Build settings
-markdown: redcarpet 
-safe: true 
-lsi: false 
-
-redcarpet: 
-extensions: 
-- with_toc_data 
-- hard_wrap 
-- no_intra_emphasis 
-- tables 
-- fenced_code_blocks 
-- autolink 
+markdown: redcarpet2
+redcarpet:
+  extensions: ["no_intra_emphasis", "fenced_code_blocks", "autolink", "tables", "with_toc_data"]
+ 
