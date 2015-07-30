@@ -1,0 +1,437 @@
+<!DOCTYPE html><html><head><title>trident原理及编程指南</title><meta charset='utf-8'><link href='https://dn-maxiang.qbox.me/res-min/themes/marxico.css' rel='stylesheet'></head><body><div id='preview-contents' class='note-content'>
+                        <div id="wmd-preview" class="preview-content"></div>
+                    <div id="wmd-preview-section-147" class="wmd-preview-section preview-content">
+
+</div><div id="wmd-preview-section-148" class="wmd-preview-section preview-content">
+
+<h1 id="trident原理及编程指南">trident原理及编程指南</h1>
+
+<p></p>
+
+<div><div class="toc"><div class="toc">
+<ul>
+<li><a href="#trident原理及编程指南">trident原理及编程指南</a></li>
+<li><a href="#一理论介绍">一、理论介绍</a><ul>
+<li><a href="#1trident是什么">1、trident是什么？</a></li>
+<li><a href="#2trident处理单位">2、trident处理单位</a></li>
+<li><a href="#3事务类型">3、事务类型</a></li>
+</ul>
+</li>
+<li><a href="#二编程指南">二、编程指南</a><ul>
+<li><a href="#1定义输入流">1、定义输入流</a></li>
+<li><a href="#2统计单词数量">2、统计单词数量</a></li>
+<li><a href="#3输出统计结果">3、输出统计结果</a></li>
+<li><a href="#4split的字义">4、split的字义</a></li>
+</ul>
+</li>
+<li><a href="#三使用kafka作为数据源">三、使用kafka作为数据源</a><ul>
+<li><a href="#1定义kafka相关配置">1、定义kafka相关配置</a></li>
+<li><a href="#2从kafka中读取消息并处理">2、从kafka中读取消息并处理</a></li>
+<li><a href="#3提交拓扑">3、提交拓扑：</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+</div>
+
+</div><div id="wmd-preview-section-149" class="wmd-preview-section preview-content">
+
+<h1 id="一理论介绍">一、理论介绍</h1>
+
+</div><div id="wmd-preview-section-150" class="wmd-preview-section preview-content">
+
+<h2 id="1trident是什么">1、trident是什么？</h2>
+
+<p>Trident is a high-level abstraction for doing realtime computing on top of Storm. It allows you to seamlessly intermix high throughput (millions of messages per second), stateful stream processing with low latency distributed querying. If you’re familiar with high level batch processing tools like Pig or Cascading, the concepts of Trident will be very familiar – Trident has joins, aggregations, grouping, functions, and filters. In addition to these, Trident adds primitives for doing stateful, incremental processing on top of any database or persistence store. Trident has consistent, exactly-once semantics, so it is easy to reason about Trident topologies. <br>
+简单的说，trident是storm的更高层次抽象，相对storm，它主要提供了2个方面的好处： <br>
+（1）提供了更高层次的抽象，将常用的count,sum等封装成了方法，可以直接调用，不需要自己实现。 <br>
+（2）提供了一次原语，如groupby等。 <br>
+（3）提供了事务支持，可以保证数据均处理且只处理了一次。</p>
+
+</div><div id="wmd-preview-section-151" class="wmd-preview-section preview-content">
+
+<h2 id="2trident处理单位">2、trident处理单位</h2>
+
+<p>trident每次处理消息均为batch为单位，即一次处理多个元组。</p>
+
+</div><div id="wmd-preview-section-152" class="wmd-preview-section preview-content">
+
+<h2 id="3事务类型">3、事务类型</h2>
+
+<p>关于事务类型，有2个比较容易混淆的概念：spout的事务类型以及事务状态。 <br>
+它们都有3种类型，分别为：事务型、非事务型和透明事务型。 <br>
+（1）spout <br>
+spout的类型指定了由于下游出现问题导致元组需要重放时，应该怎么发送元组。 <br>
+事务型spout:重放时能保证同一个批次发送同一批元组。可以保证每一个元组都被发送且只发送一个，且同一个批次所发送的元组是一样的。 <br>
+非事务型spout：没有任何保障，发完就算。 <br>
+透明事务型spout：同一个批次发送的元组有可能不同的，它可以保证每一个元组都被发送且只发送一次，但不能保证重放时同一个批次的数据是一样的。这对于部分失效的情况尤其有用，假如以kafka作为spout，当一个topic的某个分区失效时，可以用其它分区的数据先形成一个批次发送出去，如果是事务型spout，则必须等待那个分区恢复后才能继续发送。 <br>
+这三种类型可以分别通过实现ITransactionalSpout、ITridentSpout、IOpaquePartitionedTridentSpout接口来定义。</p>
+
+<p>（2）state <br>
+state的类型指定了如果将storm的中间输出或者最终输出持久化到某个地方（如内存），当某个批次的数据重放时应该如果更新状态。state对于下游出现错误的情况尤其有用。 <br>
+事务型状态：同一批次tuple提供的结果是相同的。 <br>
+非事务型状态：没有回滚能力，更新操作是永久的。 <br>
+透明事务型状态：更新操作基于先前的值，这样由于这批数据发生变化，对应的结果也会发生变化。透明事务型状态除了保存当前数据外，还要保存上一批数据，当数据重放时，可以基于上一批数据作更新。</p>
+
+</div><div id="wmd-preview-section-153" class="wmd-preview-section preview-content">
+
+<h1 id="二编程指南">二、编程指南</h1>
+
+<p>代码如下</p>
+
+</div><div id="wmd-preview-section-154" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs monkey">package org.ljh.tridentdemo;
+
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> backtype.storm.Config;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> backtype.storm.LocalCluster;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> backtype.storm.LocalDRPC;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> backtype.storm.StormSubmitter;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> backtype.storm.generated.StormTopology;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> backtype.storm.tuple.Fields;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> backtype.storm.tuple.Values;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> storm.trident.TridentState;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> storm.trident.TridentTopology;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> storm.trident.operation.BaseFunction;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> storm.trident.operation.TridentCollector;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> storm.trident.operation.builtin.Count;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> storm.trident.operation.builtin.FilterNull;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> storm.trident.operation.builtin.MapGet;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> storm.trident.operation.builtin.Sum;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> storm.trident.testing.FixedBatchSpout;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> storm.trident.testing.MemoryMapState;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> storm.trident.tuple.TridentTuple;</span>
+
+
+<span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">TridentWordCount</span> {</span>
+    <span class="hljs-keyword">public</span> static <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Split</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">BaseFunction</span> {</span>
+        @Override
+        <span class="hljs-keyword">public</span> void execute(TridentTuple tuple, TridentCollector collector) {
+            String sentence = tuple.getString(<span class="hljs-number">0</span>);
+            <span class="hljs-keyword">for</span> (String word : sentence.split(<span class="hljs-string">" "</span>)) {
+                collector.emit(<span class="hljs-keyword">new</span> Values(word));
+            }
+        }
+    }
+
+    <span class="hljs-keyword">public</span> static StormTopology buildTopology(LocalDRPC drpc) {
+        FixedBatchSpout spout =
+                <span class="hljs-keyword">new</span> FixedBatchSpout(<span class="hljs-keyword">new</span> Fields(<span class="hljs-string">"sentence"</span>), <span class="hljs-number">3</span>, <span class="hljs-keyword">new</span> Values(
+                        <span class="hljs-string">"the cow jumped over the moon"</span>), <span class="hljs-keyword">new</span> Values(
+                        <span class="hljs-string">"the man went to the store and bought some candy"</span>), <span class="hljs-keyword">new</span> Values(
+                        <span class="hljs-string">"four score and seven years ago"</span>),
+                        <span class="hljs-keyword">new</span> Values(<span class="hljs-string">"how many apples can you eat"</span>), <span class="hljs-keyword">new</span> Values(
+                                <span class="hljs-string">"to be or not to be the person"</span>));
+        spout.setCycle(<span class="hljs-literal">true</span>);
+
+        //创建拓扑对象
+        TridentTopology topology = <span class="hljs-keyword">new</span> TridentTopology();
+
+        //这个流程用于统计单词数据，结果将被保存在wordCounts中
+        TridentState wordCounts =
+                topology.newStream(<span class="hljs-string">"spout1"</span>, spout)
+                        .parallelismHint(<span class="hljs-number">16</span>)
+                        .each(<span class="hljs-keyword">new</span> Fields(<span class="hljs-string">"sentence"</span>), <span class="hljs-keyword">new</span> Split(), <span class="hljs-keyword">new</span> Fields(<span class="hljs-string">"word"</span>))
+                        .groupBy(<span class="hljs-keyword">new</span> Fields(<span class="hljs-string">"word"</span>))
+                        .persistentAggregate(<span class="hljs-keyword">new</span> MemoryMapState.Factory(), <span class="hljs-keyword">new</span> Count(),
+                                <span class="hljs-keyword">new</span> Fields(<span class="hljs-string">"count"</span>)).parallelismHint(<span class="hljs-number">16</span>);
+        //这个流程用于查询上面的统计结果
+        topology.newDRPCStream(<span class="hljs-string">"words"</span>, drpc)
+                .each(<span class="hljs-keyword">new</span> Fields(<span class="hljs-string">"args"</span>), <span class="hljs-keyword">new</span> Split(), <span class="hljs-keyword">new</span> Fields(<span class="hljs-string">"word"</span>))
+                .groupBy(<span class="hljs-keyword">new</span> Fields(<span class="hljs-string">"word"</span>))
+                .stateQuery(wordCounts, <span class="hljs-keyword">new</span> Fields(<span class="hljs-string">"word"</span>), <span class="hljs-keyword">new</span> MapGet(), <span class="hljs-keyword">new</span> Fields(<span class="hljs-string">"count"</span>))
+                .each(<span class="hljs-keyword">new</span> Fields(<span class="hljs-string">"count"</span>), <span class="hljs-keyword">new</span> FilterNull())
+               .aggregate(<span class="hljs-keyword">new</span> Fields(<span class="hljs-string">"count"</span>), <span class="hljs-keyword">new</span> Sum(), <span class="hljs-keyword">new</span> Fields(<span class="hljs-string">"sum"</span>));
+        <span class="hljs-keyword">return</span> topology.build();
+    }
+
+    <span class="hljs-keyword">public</span> static void main(String[] args) throws Exception {
+        Config conf = <span class="hljs-keyword">new</span> Config();
+        conf.setMaxSpoutPending(<span class="hljs-number">20</span>);
+        <span class="hljs-keyword">if</span> (args.length == <span class="hljs-number">0</span>) {
+            LocalDRPC drpc = <span class="hljs-keyword">new</span> LocalDRPC();
+            LocalCluster cluster = <span class="hljs-keyword">new</span> LocalCluster();
+            cluster.submitTopology(<span class="hljs-string">"wordCounter"</span>, conf, buildTopology(drpc));
+            <span class="hljs-keyword">for</span> (int i = <span class="hljs-number">0</span>; i &lt; <span class="hljs-number">100</span>; i++) {
+                System.out.println(<span class="hljs-string">"DRPC RESULT: "</span> + drpc.execute(<span class="hljs-string">"words"</span>, <span class="hljs-string">"cat the dog jumped"</span>));
+                Thread.sleep(<span class="hljs-number">1000</span>);
+            }
+        } <span class="hljs-keyword">else</span> {
+            conf.setNumWorkers(<span class="hljs-number">3</span>);
+            StormSubmitter.submitTopologyWithProgressBar(args[<span class="hljs-number">0</span>], conf, buildTopology(<span class="hljs-literal">null</span>));
+        }
+    }
+}</code></pre>
+
+<p>实例实现了最基本的wordcount功能，然后将结果输出。关键步骤如下：</p>
+
+</div><div id="wmd-preview-section-155" class="wmd-preview-section preview-content">
+
+<h2 id="1定义输入流">1、定义输入流</h2>
+
+</div><div id="wmd-preview-section-156" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs actionscript">        FixedBatchSpout spout =
+                <span class="hljs-keyword">new</span> FixedBatchSpout(<span class="hljs-keyword">new</span> Fields(<span class="hljs-string">"sentence"</span>), <span class="hljs-number">3</span>, <span class="hljs-keyword">new</span> Values(
+                        <span class="hljs-string">"the cow jumped over the moon"</span>), <span class="hljs-keyword">new</span> Values(
+                        <span class="hljs-string">"the man went to the store and bought some candy"</span>), <span class="hljs-keyword">new</span> Values(
+                        <span class="hljs-string">"four score and seven years ago"</span>),
+                        <span class="hljs-keyword">new</span> Values(<span class="hljs-string">"how many apples can you eat"</span>), <span class="hljs-keyword">new</span> Values(
+                                <span class="hljs-string">"to be or not to be the person"</span>));
+        spout.setCycle(<span class="hljs-literal">true</span>);</code></pre>
+
+<p>（1）使用FixedBatchSpout创建一个输入spout，spout的输出字段为sentence，每3个元组作为一个batch。 <br>
+（2）数据不断的重复发送。</p>
+
+</div><div id="wmd-preview-section-157" class="wmd-preview-section preview-content">
+
+<h2 id="2统计单词数量">2、统计单词数量</h2>
+
+</div><div id="wmd-preview-section-158" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs ocaml">        <span class="hljs-type">TridentState</span> wordCounts =
+                topology.newStream(<span class="hljs-string">"spout1"</span>, spout)
+                        .parallelismHint(<span class="hljs-number">16</span>)
+                        .each(<span class="hljs-keyword">new</span> <span class="hljs-type">Fields</span>(<span class="hljs-string">"sentence"</span>), <span class="hljs-keyword">new</span> <span class="hljs-type">Split</span><span class="hljs-literal">()</span>, <span class="hljs-keyword">new</span> <span class="hljs-type">Fields</span>(<span class="hljs-string">"word"</span>))
+                        .groupBy(<span class="hljs-keyword">new</span> <span class="hljs-type">Fields</span>(<span class="hljs-string">"word"</span>))
+                        .persistentAggregate(<span class="hljs-keyword">new</span> <span class="hljs-type">MemoryMapState</span>.<span class="hljs-type">Factory</span><span class="hljs-literal">()</span>, <span class="hljs-keyword">new</span> <span class="hljs-type">Count</span><span class="hljs-literal">()</span>,
+                                <span class="hljs-keyword">new</span> <span class="hljs-type">Fields</span>(<span class="hljs-string">"count"</span>)).parallelismHint(<span class="hljs-number">16</span>);
+</code></pre>
+
+<p>这个流程用于统计单词数据，结果将被保存在wordCounts中。6行代码的含义分别为： <br>
+（1）首先从spout中读取消息，spout1定义了zookeeper中用于保存这个拓扑的节点名称。 <br>
+（2）并行度设置为16，即16个线程同时从spout中读取消息。 <br>
+（3）each中的三个参数分别为：输入字段名称，处理函数，输出字段名称。即从字段名称叫sentence的数据流中读取数据，然后经过new Split()处理后，以word作为字段名发送出去。其中new Split()后面介绍，它的功能就是将输入的内容以空格为界作了切分。 <br>
+（4）将字段名称为word的数据流作分组，即相同值的放在一组。 <br>
+（5）将已经分好组的数据作统计，结果放到MemoryMapState，然后以count作为字段名称将结果发送出去。这步骤会同时存储数据及状态，并将返回TridentState对象。 <br>
+（6）并行度设置。</p>
+
+</div><div id="wmd-preview-section-159" class="wmd-preview-section preview-content">
+
+<h2 id="3输出统计结果">3、输出统计结果</h2>
+
+</div><div id="wmd-preview-section-160" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs ocaml">        topology.newDRPCStream(<span class="hljs-string">"words"</span>, drpc)
+                .each(<span class="hljs-keyword">new</span> <span class="hljs-type">Fields</span>(<span class="hljs-string">"args"</span>), <span class="hljs-keyword">new</span> <span class="hljs-type">Split</span><span class="hljs-literal">()</span>, <span class="hljs-keyword">new</span> <span class="hljs-type">Fields</span>(<span class="hljs-string">"word"</span>))
+                .groupBy(<span class="hljs-keyword">new</span> <span class="hljs-type">Fields</span>(<span class="hljs-string">"word"</span>))
+                .stateQuery(wordCounts, <span class="hljs-keyword">new</span> <span class="hljs-type">Fields</span>(<span class="hljs-string">"word"</span>), <span class="hljs-keyword">new</span> <span class="hljs-type">MapGet</span><span class="hljs-literal">()</span>, <span class="hljs-keyword">new</span> <span class="hljs-type">Fields</span>(<span class="hljs-string">"count"</span>))
+                .each(<span class="hljs-keyword">new</span> <span class="hljs-type">Fields</span>(<span class="hljs-string">"count"</span>), <span class="hljs-keyword">new</span> <span class="hljs-type">FilterNull</span><span class="hljs-literal">()</span>)
+               .aggregate(<span class="hljs-keyword">new</span> <span class="hljs-type">Fields</span>(<span class="hljs-string">"count"</span>), <span class="hljs-keyword">new</span> <span class="hljs-type">Sum</span><span class="hljs-literal">()</span>, <span class="hljs-keyword">new</span> <span class="hljs-type">Fields</span>(<span class="hljs-string">"sum"</span>));</code></pre>
+
+<p>这个流程从上述的wordCounts对象中读取结果，并返回。6行代码的含义分别为：</p>
+
+<p>（1）等待一个drpc调用，从drpc服务器中接受words的调用来提供消息。调用代码如下：</p>
+
+</div><div id="wmd-preview-section-161" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs stylus">drpc.<span class="hljs-function"><span class="hljs-title">execute</span><span class="hljs-params">(<span class="hljs-string">"words"</span>, <span class="hljs-string">"cat the dog jumped"</span>)</span></span></code></pre>
+
+<p>（2）输入为上述调用中提供的参数，经过Split()后，以word作为字段名称发送出去。 <br>
+（3）以word的值作分组。 <br>
+（4）从wordCounts对象中查询结果。4个参数分别代表：数据来源，输入数据，内置方法（用于从map中根据key来查找value），输出名称。 <br>
+（5）过滤掉空的查询结果，如本例中，cat和dog都没有结果。 <br>
+（6）将结果作统计，并以sum作为字段名称发送出去，这也是DRPC调用所返回的结果。如果没有这一行，最后的输出结果</p>
+
+</div><div id="wmd-preview-section-162" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs groovy">DRPC <span class="hljs-string">RESULT:</span> [[<span class="hljs-string">"cat the dog jumped"</span>,<span class="hljs-string">"the"</span>,<span class="hljs-number">2310</span>],[<span class="hljs-string">"cat the dog jumped"</span>,<span class="hljs-string">"jumped"</span>,<span class="hljs-number">462</span>]]</code></pre>
+
+<p>加上这一行后，结果为：</p>
+
+</div><div id="wmd-preview-section-163" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs lua">DRPC RESULT: <span class="hljs-string">[[180]]</span></code></pre>
+
+</div><div id="wmd-preview-section-164" class="wmd-preview-section preview-content">
+
+<h2 id="4split的字义">4、split的字义</h2>
+
+</div><div id="wmd-preview-section-165" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs scala">    public static <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Split</span> <span class="hljs-keyword"><span class="hljs-keyword">extends</span></span> <span class="hljs-title">BaseFunction</span> {</span>
+        <span class="hljs-annotation">@Override</span>
+        public void execute(<span class="hljs-type">TridentTuple</span> tuple, <span class="hljs-type">TridentCollector</span> collector) {
+            <span class="hljs-type">String</span> sentence = tuple.getString(<span class="hljs-number">0</span>);
+            <span class="hljs-keyword">for</span> (<span class="hljs-type">String</span> word : sentence.split(<span class="hljs-string">" "</span>)) {
+                collector.emit(<span class="hljs-keyword">new</span> <span class="hljs-type">Values</span>(word));
+            }
+        }
+    }</code></pre>
+
+<p>注意它最后会发送数据。</p>
+
+<p>5、创建并启动拓扑</p>
+
+</div><div id="wmd-preview-section-166" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs processing">    <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> main(<span class="hljs-keyword">String</span>[] args) <span class="hljs-keyword">throws</span> Exception {
+        Config conf = <span class="hljs-keyword">new</span> Config();
+        conf.setMaxSpoutPending(<span class="hljs-number">20</span>);
+        <span class="hljs-keyword">if</span> (args.length == <span class="hljs-number">0</span>) {
+            LocalDRPC drpc = <span class="hljs-keyword">new</span> LocalDRPC();
+            LocalCluster cluster = <span class="hljs-keyword">new</span> LocalCluster();
+            cluster.submitTopology(<span class="hljs-string">"wordCounter"</span>, conf, buildTopology(drpc));
+            <span class="hljs-keyword">for</span> (<span class="hljs-built_in">int</span> i = <span class="hljs-number">0</span>; i &lt; <span class="hljs-number">100</span>; i++) {
+                System.out.<span class="hljs-built_in">println</span>(<span class="hljs-string">"DRPC RESULT: "</span> + drpc.execute(<span class="hljs-string">"words"</span>, <span class="hljs-string">"cat the dog jumped"</span>));
+                Thread.sleep(<span class="hljs-number">1000</span>);
+            }
+        } <span class="hljs-keyword">else</span> {
+            conf.setNumWorkers(<span class="hljs-number">3</span>);
+            StormSubmitter.submitTopologyWithProgressBar(args[<span class="hljs-number">0</span>], conf, buildTopology(<span class="hljs-keyword">null</span>));
+        }
+    }</code></pre>
+
+<p>（1）当无参数运行时，启动一个本地的集群，及自已创建一个drpc对象来输入。 <br>
+（2）当有参数运行时，设置worker数量为3，然后提交拓扑到集群，并等待远程的drpc调用。</p>
+
+</div><div id="wmd-preview-section-167" class="wmd-preview-section preview-content">
+
+<h1 id="三使用kafka作为数据源">三、使用kafka作为数据源</h1>
+
+</div><div id="wmd-preview-section-168" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs monkey">package com.netease.sytopology;
+
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> java.io.File;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> java.io.FileWriter;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> java.io.IOException;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> java.util.Arrays;</span>
+
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> org.slf4j.Logger;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> org.slf4j.LoggerFactory;</span>
+
+
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> storm.kafka.BrokerHosts;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> storm.kafka.StringScheme;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> storm.kafka.ZkHosts;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> storm.kafka.trident.OpaqueTridentKafkaSpout;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> storm.kafka.trident.TridentKafkaConfig;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> storm.trident.TridentTopology;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> storm.trident.operation.BaseFunction;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> storm.trident.operation.TridentCollector;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> storm.trident.operation.builtin.Count;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> storm.trident.testing.MemoryMapState;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> storm.trident.tuple.TridentTuple;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> backtype.storm.Config;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> backtype.storm.StormSubmitter;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> backtype.storm.generated.AlreadyAliveException;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> backtype.storm.generated.InvalidTopologyException;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> backtype.storm.generated.StormTopology;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> backtype.storm.spout.SchemeAsMultiScheme;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> backtype.storm.tuple.Fields;</span>
+<span class="hljs-preprocessor"><span class="hljs-keyword">import</span> backtype.storm.tuple.Values;</span>
+
+/*
+ * 本类完成以下内容
+ */
+<span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">SyTopology</span> {</span>
+
+    <span class="hljs-keyword">public</span> static <span class="hljs-keyword">final</span> Logger <span class="hljs-built_in">LOG</span> = LoggerFactory.getLogger(SyTopology.class);
+
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">final</span> BrokerHosts brokerHosts;
+
+    <span class="hljs-keyword">public</span> SyTopology(String kafkaZookeeper) {
+        brokerHosts = <span class="hljs-keyword">new</span> ZkHosts(kafkaZookeeper);
+    }
+
+    <span class="hljs-keyword">public</span> StormTopology buildTopology() {
+        TridentKafkaConfig kafkaConfig = <span class="hljs-keyword">new</span> TridentKafkaConfig(brokerHosts, <span class="hljs-string">"ma30"</span>, <span class="hljs-string">"storm"</span>);
+        kafkaConfig.scheme = <span class="hljs-keyword">new</span> SchemeAsMultiScheme(<span class="hljs-keyword">new</span> StringScheme());
+        // TransactionalTridentKafkaSpout kafkaSpout = <span class="hljs-keyword">new</span>
+        // TransactionalTridentKafkaSpout(kafkaConfig);
+        OpaqueTridentKafkaSpout kafkaSpout = <span class="hljs-keyword">new</span> OpaqueTridentKafkaSpout(kafkaConfig);
+        TridentTopology topology = <span class="hljs-keyword">new</span> TridentTopology();
+
+        // TridentState wordCounts =
+        topology.newStream(<span class="hljs-string">"kafka4"</span>, kafkaSpout).
+        each(<span class="hljs-keyword">new</span> Fields(<span class="hljs-string">"str"</span>), <span class="hljs-keyword">new</span> Split(),
+                <span class="hljs-keyword">new</span> Fields(<span class="hljs-string">"word"</span>)).groupBy(<span class="hljs-keyword">new</span> Fields(<span class="hljs-string">"word"</span>))
+                .persistentAggregate(<span class="hljs-keyword">new</span> MemoryMapState.Factory(), <span class="hljs-keyword">new</span> Count(),
+                        <span class="hljs-keyword">new</span> Fields(<span class="hljs-string">"count"</span>)).parallelismHint(<span class="hljs-number">16</span>);
+        // .persistentAggregate(<span class="hljs-keyword">new</span> HazelCastStateFactory(), <span class="hljs-keyword">new</span> Count(),
+        // <span class="hljs-keyword">new</span> Fields(<span class="hljs-string">"aggregates_words"</span>)).parallelismHint(<span class="hljs-number">2</span>);
+
+
+        <span class="hljs-keyword">return</span> topology.build();
+    }
+
+    <span class="hljs-keyword">public</span> static void main(String[] args) throws AlreadyAliveException, InvalidTopologyException {
+        String kafkaZk = args[<span class="hljs-number">0</span>];
+        SyTopology topology = <span class="hljs-keyword">new</span> SyTopology(kafkaZk);
+        Config config = <span class="hljs-keyword">new</span> Config();
+        config.put(Config.TOPOLOGY_TRIDENT_BATCH_EMIT_INTERVAL_MILLIS, <span class="hljs-number">2000</span>);
+
+        String name = args[<span class="hljs-number">1</span>];
+        String dockerIp = args[<span class="hljs-number">2</span>];
+        config.setNumWorkers(<span class="hljs-number">9</span>);
+        config.setMaxTaskParallelism(<span class="hljs-number">5</span>);
+        config.put(Config.NIMBUS_HOST, dockerIp);
+        config.put(Config.NIMBUS_THRIFT_PORT, <span class="hljs-number">6627</span>);
+        config.put(Config.STORM_ZOOKEEPER_PORT, <span class="hljs-number">2181</span>);
+        config.put(Config.STORM_ZOOKEEPER_SERVERS, Arrays.asList(dockerIp));
+        StormSubmitter.submitTopology(name, config, topology.buildTopology());
+
+    }
+
+    static <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Split</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">BaseFunction</span> {</span>
+        <span class="hljs-keyword">public</span> void execute(TridentTuple tuple, TridentCollector collector) {
+            String sentence = tuple.getString(<span class="hljs-number">0</span>);
+            <span class="hljs-keyword">for</span> (String word : sentence.split(<span class="hljs-string">","</span>)) {
+                <span class="hljs-keyword">try</span> {
+                    FileWriter fw = <span class="hljs-keyword">new</span> FileWriter(<span class="hljs-keyword">new</span> File(<span class="hljs-string">"/home/data/test/ma30/ma30.txt"</span>),<span class="hljs-literal">true</span>);
+                    fw.write(word);
+                    fw.flush();
+                    fw.close();
+                } <span class="hljs-keyword">catch</span> (IOException e) {
+                    // TODO Auto-generated <span class="hljs-keyword">catch</span> block
+                    e.printStackTrace();
+                }
+                collector.emit(<span class="hljs-keyword">new</span> Values(word));
+
+            }
+        }
+    }
+}</code></pre>
+
+<p>本例将从kafka中读取消息，然后对消息根据“，”作拆分，并写入一个本地文件。</p>
+
+</div><div id="wmd-preview-section-169" class="wmd-preview-section preview-content">
+
+<h2 id="1定义kafka相关配置">1、定义kafka相关配置</h2>
+
+</div><div id="wmd-preview-section-170" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs ocaml">        <span class="hljs-type">TridentKafkaConfig</span> kafkaConfig = <span class="hljs-keyword">new</span> <span class="hljs-type">TridentKafkaConfig</span>(brokerHosts, <span class="hljs-string">"ma30"</span>, <span class="hljs-string">"storm"</span>);
+        kafkaConfig.scheme = <span class="hljs-keyword">new</span> <span class="hljs-type">SchemeAsMultiScheme</span>(<span class="hljs-keyword">new</span> <span class="hljs-type">StringScheme</span><span class="hljs-literal">()</span>);
+        <span class="hljs-type">OpaqueTridentKafkaSpout</span> kafkaSpout = <span class="hljs-keyword">new</span> <span class="hljs-type">OpaqueTridentKafkaSpout</span>(kafkaConfig);</code></pre>
+
+<p>其中ma30是订阅的topic名称。</p>
+
+</div><div id="wmd-preview-section-171" class="wmd-preview-section preview-content">
+
+<h2 id="2从kafka中读取消息并处理">2、从kafka中读取消息并处理</h2>
+
+</div><div id="wmd-preview-section-172" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs ocaml">        topology.newStream(<span class="hljs-string">"kafka4"</span>, kafkaSpout).
+        each(<span class="hljs-keyword">new</span> <span class="hljs-type">Fields</span>(<span class="hljs-string">"str"</span>), <span class="hljs-keyword">new</span> <span class="hljs-type">Split</span><span class="hljs-literal">()</span>,<span class="hljs-keyword">new</span> <span class="hljs-type">Fields</span>(<span class="hljs-string">"word"</span>)).
+        groupBy(<span class="hljs-keyword">new</span> <span class="hljs-type">Fields</span>(<span class="hljs-string">"word"</span>))
+        .persistentAggregate(<span class="hljs-keyword">new</span> <span class="hljs-type">MemoryMapState</span>.<span class="hljs-type">Factory</span><span class="hljs-literal">()</span>, <span class="hljs-keyword">new</span> <span class="hljs-type">Count</span><span class="hljs-literal">()</span>,
+                        <span class="hljs-keyword">new</span> <span class="hljs-type">Fields</span>(<span class="hljs-string">"count"</span>)).parallelismHint(<span class="hljs-number">16</span>);</code></pre>
+
+<p>（1）指定了数据来源，并指定zookeeper中用于保存数据的位置，即保存在/transactional/kafka4。 <br>
+（2）指定处理方法及发射的字段。 <br>
+（3）根据word作分组。 <br>
+（4）计数后将状态写入MemoryMapState</p>
+
+</div><div id="wmd-preview-section-173" class="wmd-preview-section preview-content">
+
+<h2 id="3提交拓扑">3、提交拓扑：</h2>
+
+</div><div id="wmd-preview-section-174" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs stylus">storm jar target/sytopology2-<span class="hljs-number">0.0</span>.<span class="hljs-number">1</span>-SNAPSHOT<span class="hljs-class">.jar</span> com<span class="hljs-class">.netease</span><span class="hljs-class">.sytopology</span><span class="hljs-class">.SyTopology</span> <span class="hljs-number">192.168</span>.<span class="hljs-number">172.98</span>:<span class="hljs-number">2181</span>/kafka test3 <span class="hljs-number">192.168</span>.<span class="hljs-number">172.98</span></code></pre>
+
+<p>此时可以在/home/data/test/ma30/ma30.txt看到split的结果</p></div><div id="wmd-preview-section-footnotes" class="preview-content"></div></div></body></html>

@@ -1,0 +1,304 @@
+<!DOCTYPE html><html><head><title>storm编程指南</title><meta charset='utf-8'><link href='https://dn-maxiang.qbox.me/res-min/themes/marxico.css' rel='stylesheet'></head><body><div id='preview-contents' class='note-content'>
+                        <div id="wmd-preview" class="preview-content"></div>
+                    <div id="wmd-preview-section-213" class="wmd-preview-section preview-content">
+
+</div><div id="wmd-preview-section-214" class="wmd-preview-section preview-content">
+
+<h1 id="storm编程指南">storm编程指南</h1>
+
+<p></p>
+
+<div><div class="toc"><div class="toc">
+<ul>
+<li><a href="#storm编程指南">storm编程指南</a><ul>
+<li><a href="#一创建spout">（一）创建spout</a></li>
+<li><a href="#二创建split-bolt">（二）创建split-bolt</a></li>
+<li><a href="#三创建wordcount-bolt">（三）创建wordcount-bolt</a></li>
+<li><a href="#四创建report-bolt">（四）创建report-bolt</a></li>
+<li><a href="#五创建topo">（五）创建topo</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+</div>
+
+<p>本文介绍了storm的基本编程，关于trident的编程，请见？？？</p>
+
+<p>本示例使用storm运行经典的wordcount程序，拓扑如下： <br>
+sentence-spout—&gt;split-bolt—&gt;count-bolt—&gt;report-bolt <br>
+分别完成句子的产生、拆分出单词、单词数量统计、统计结果输出 <br>
+完整代码请见 <a href="https://github.com/jinhong-lu/stormdemo" target="_blank">https://github.com/jinhong-lu/stormdemo</a> <br>
+以下是关键代码的分析。</p>
+
+</div><div id="wmd-preview-section-215" class="wmd-preview-section preview-content">
+
+<h2 id="一创建spout">（一）创建spout</h2>
+
+</div><div id="wmd-preview-section-216" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs axapta"><span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">SentenceSpout</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">BaseRichSpout</span> </span>{
+    <span class="hljs-keyword">private</span> SpoutOutputCollector collector;
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">int</span> <span class="hljs-keyword">index</span> = <span class="hljs-number">0</span>;
+    <span class="hljs-keyword">private</span> String[] sentences = { <span class="hljs-string">"when i was young i'd listen to the radio"</span>,
+            <span class="hljs-string">"waiting for my favorite songs"</span>, <span class="hljs-string">"when they played i'd sing along"</span>,
+            <span class="hljs-string">"it make me smile"</span>,
+            <span class="hljs-string">"those were such happy times and not so long ago"</span>,
+            <span class="hljs-string">"how i wondered where they'd gone"</span>,
+            <span class="hljs-string">"but they're back again just like a long lost friend"</span>,
+            <span class="hljs-string">"all the songs i love so well"</span>, <span class="hljs-string">"every shalala every wo'wo"</span>,
+            <span class="hljs-string">"still shines."</span>, <span class="hljs-string">"every shing-a-ling-a-ling"</span>,
+            <span class="hljs-string">"that they're starting"</span>, <span class="hljs-string">"to sing so fine"</span>};
+
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> open(Map conf, TopologyContext context,
+            SpoutOutputCollector collector) {
+        <span class="hljs-keyword">this</span>.collector = collector;
+    }
+
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> declareOutputFields(OutputFieldsDeclarer declarer) {
+        declarer.declare(<span class="hljs-keyword">new</span> Fields(<span class="hljs-string">"sentence"</span>));
+    }
+
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> nextTuple() {
+        <span class="hljs-keyword">this</span>.collector.emit(<span class="hljs-keyword">new</span> Values(sentences[<span class="hljs-keyword">index</span>]));
+        <span class="hljs-keyword">index</span>++;
+        <span class="hljs-keyword">if</span> (<span class="hljs-keyword">index</span> &gt;= sentences.length) {
+            <span class="hljs-keyword">index</span> = <span class="hljs-number">0</span>;
+        }
+        <span class="hljs-keyword">try</span> {
+            Thread.sleep(<span class="hljs-number">1</span>);
+        } <span class="hljs-keyword">catch</span> (InterruptedException e) {
+            <span class="hljs-comment">//e.printStackTrace();</span>
+        }
+    }
+}</code></pre>
+
+<p>上述类中，将string数组中内容逐行发送出去，主要的方法有： <br>
+（1）open()方法完成spout的初始化工作，与bolt的prepare()方法类似 <br>
+（2）declareOutputFileds()定义了发送内容的字段名称与字段数量，bolt中的方法名称一样。 <br>
+（3）nextTuple()方法是对每一个需要处理的数据均会执行的操作，也bolt的executor()方法类似。它是整个逻辑处理的核心，通过emit()方法将数据发送到拓扑中的下一个节点。</p>
+
+</div><div id="wmd-preview-section-217" class="wmd-preview-section preview-content">
+
+<h2 id="二创建split-bolt">（二）创建split-bolt</h2>
+
+</div><div id="wmd-preview-section-218" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs aspectj"><span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">SplitSentenceBolt</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">BaseRichBolt</span></span>{
+    <span class="hljs-keyword">private</span> OutputCollector collector;
+
+    <span class="hljs-keyword">public</span> <span class="hljs-function"><span class="hljs-keyword">void</span> <span class="hljs-title">prepare</span><span class="hljs-params">(Map stormConf, TopologyContext context,
+            OutputCollector collector)</span> </span>{
+        <span class="hljs-keyword">this</span>.collector = collector;
+    }
+
+    <span class="hljs-keyword">public</span> <span class="hljs-function"><span class="hljs-keyword">void</span> <span class="hljs-title">declareOutputFields</span><span class="hljs-params">(OutputFieldsDeclarer declarer)</span> </span>{
+        declarer.<span class="hljs-keyword">declare</span>(<span class="hljs-keyword">new</span> Fields(<span class="hljs-string">"word"</span>));
+    }
+
+    <span class="hljs-keyword">public</span> <span class="hljs-function"><span class="hljs-keyword">void</span> <span class="hljs-title">execute</span><span class="hljs-params">(Tuple input)</span> </span>{
+        String sentence = input.getStringByField(<span class="hljs-string">"sentence"</span>);
+        String[] words = sentence.split(<span class="hljs-string">" "</span>);
+        <span class="hljs-keyword">for</span>(String word : words){
+            <span class="hljs-keyword">this</span>.collector.emit(<span class="hljs-keyword">new</span> Values(word));
+            <span class="hljs-comment">//System.out.println(word);</span>
+        }
+    }
+}</code></pre>
+
+<p>三个方法的含义与spout类似，这个类根据空格把收到的句子进行拆分，拆成一个一个的单词，然后把单词逐个发送出去。 <br>
+input.getStringByField(“sentence”)可以根据上一节点发送的关键字获取到相应的内容。</p>
+
+</div><div id="wmd-preview-section-219" class="wmd-preview-section preview-content">
+
+<h2 id="三创建wordcount-bolt">（三）创建wordcount-bolt</h2>
+
+</div><div id="wmd-preview-section-220" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs gradle"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> WordCountBolt <span class="hljs-keyword">extends</span> BaseRichBolt{
+    <span class="hljs-keyword">private</span> OutputCollector collector;
+    <span class="hljs-keyword">private</span> Map&lt;String,<span class="hljs-keyword">Long</span>&gt; counts = <span class="hljs-keyword">null</span>;
+
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> prepare(Map stormConf, TopologyContext context,
+            OutputCollector collector) {
+        <span class="hljs-keyword">this</span>.collector = collector;
+        <span class="hljs-keyword">this</span>.counts = <span class="hljs-keyword">new</span> HashMap&lt;String, <span class="hljs-keyword">Long</span>&gt;();
+    }
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> declareOutputFields(OutputFieldsDeclarer declarer) {
+        declarer.declare(<span class="hljs-keyword">new</span> Fields(<span class="hljs-string">"word"</span>,<span class="hljs-string">"count"</span>));
+    }
+
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> execute(Tuple input) {
+        String word = input.getStringByField(<span class="hljs-string">"word"</span>);
+        <span class="hljs-keyword">Long</span> <span class="hljs-keyword">count</span> = <span class="hljs-keyword">this</span>.counts.get(word);
+        <span class="hljs-keyword">if</span>(<span class="hljs-keyword">count</span> == <span class="hljs-keyword">null</span>){
+            <span class="hljs-keyword">count</span> = <span class="hljs-number">0</span>L;
+        }
+        <span class="hljs-keyword">count</span>++;
+        <span class="hljs-keyword">this</span>.counts.put(word, <span class="hljs-keyword">count</span>);
+        <span class="hljs-keyword">this</span>.collector.emit(<span class="hljs-keyword">new</span> Values(word,<span class="hljs-keyword">count</span>));
+        <span class="hljs-comment">//System.out.println(count);</span>
+    }
+}</code></pre>
+
+<p>本类将接收到的word进行数量统计，并把结果发送出去。 <br>
+这个bolt发送了2个filed：</p>
+
+</div><div id="wmd-preview-section-221" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs aspectj">        declarer.<span class="hljs-keyword">declare</span>(<span class="hljs-keyword">new</span> Fields(<span class="hljs-string">"word"</span>,<span class="hljs-string">"count"</span>));
+        <span class="hljs-keyword">this</span>.collector.emit(<span class="hljs-keyword">new</span> Values(word,count));</code></pre>
+
+</div><div id="wmd-preview-section-222" class="wmd-preview-section preview-content">
+
+<h2 id="四创建report-bolt">（四）创建report-bolt</h2>
+
+</div><div id="wmd-preview-section-223" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs gradle"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> ReportBolt <span class="hljs-keyword">extends</span> BaseRichBolt{
+    <span class="hljs-keyword">private</span> Map&lt;String, <span class="hljs-keyword">Long</span>&gt; counts;
+
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> prepare(Map stormConf, TopologyContext context,
+            OutputCollector collector) {
+        <span class="hljs-keyword">this</span>.counts = <span class="hljs-keyword">new</span> HashMap&lt;String,<span class="hljs-keyword">Long</span>&gt;();
+    }
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> declareOutputFields(OutputFieldsDeclarer declarer) {
+
+    }
+
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> execute(Tuple input) {
+        String word = input.getStringByField(<span class="hljs-string">"word"</span>);
+        <span class="hljs-keyword">Long</span> <span class="hljs-keyword">count</span> = input.getLongByField(<span class="hljs-string">"count"</span>);
+        counts.put(word, <span class="hljs-keyword">count</span>);
+    }
+
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> cleanup() {
+        System.out.<span class="hljs-keyword">println</span>(<span class="hljs-string">"Final output"</span>);
+        Iterator&lt;Entry&lt;String, <span class="hljs-keyword">Long</span>&gt;&gt; iter = counts.entrySet().iterator();
+        <span class="hljs-keyword">while</span> (iter.hasNext()) {
+            Entry&lt;String, <span class="hljs-keyword">Long</span>&gt; entry = iter.<span class="hljs-keyword">next</span>();
+            String word = (String) entry.getKey();
+            <span class="hljs-keyword">Long</span> <span class="hljs-keyword">count</span> = (<span class="hljs-keyword">Long</span>) entry.getValue();
+            System.out.<span class="hljs-keyword">println</span>(word + <span class="hljs-string">" : "</span> + <span class="hljs-keyword">count</span>);
+        }
+
+        <span class="hljs-keyword">super</span>.cleanup();
+    }    
+
+}</code></pre>
+
+<p>本类将从wordcount-bolt接收到的数据进行输出。 <br>
+先将结果放到一个map中，当topo被关闭时，会调用cleanup()方法，此时将map中的内容输出。</p>
+
+</div><div id="wmd-preview-section-224" class="wmd-preview-section preview-content">
+
+<h2 id="五创建topo">（五）创建topo</h2>
+
+</div><div id="wmd-preview-section-225" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs processing"><span class="hljs-keyword">public</span> class WordCountTopology {
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">final</span> <span class="hljs-keyword">String</span> SENTENCE_SPOUT_ID = <span class="hljs-string">"sentence-spout"</span>;
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">final</span> <span class="hljs-keyword">String</span> SPLIT_BOLT_ID = <span class="hljs-string">"split-bolt"</span>;
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">final</span> <span class="hljs-keyword">String</span> COUNT_BOLT_ID = <span class="hljs-string">"count-bolt"</span>;
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">final</span> <span class="hljs-keyword">String</span> REPORT_BOLT_ID = <span class="hljs-string">"report-bolt"</span>;
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">final</span> <span class="hljs-keyword">String</span> TOPOLOGY_NAME = <span class="hljs-string">"word-count-topology"</span>;
+
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> main(<span class="hljs-keyword">String</span>[] args) {
+        SentenceSpout spout = <span class="hljs-keyword">new</span> SentenceSpout();
+        SplitSentenceBolt splitBolt = <span class="hljs-keyword">new</span> SplitSentenceBolt();
+        WordCountBolt countBolt = <span class="hljs-keyword">new</span> WordCountBolt();
+        ReportBolt reportBolt = <span class="hljs-keyword">new</span> ReportBolt();
+
+        TopologyBuilder builder = <span class="hljs-keyword">new</span> TopologyBuilder();
+
+        builder.setSpout(SENTENCE_SPOUT_ID, spout);
+        builder.setBolt(SPLIT_BOLT_ID, splitBolt).shuffleGrouping(
+                SENTENCE_SPOUT_ID);
+        builder.setBolt(COUNT_BOLT_ID, countBolt).fieldsGrouping(SPLIT_BOLT_ID,
+                <span class="hljs-keyword">new</span> Fields(<span class="hljs-string">"word"</span>));
+        builder.setBolt(REPORT_BOLT_ID, reportBolt).globalGrouping(
+                COUNT_BOLT_ID);
+
+        Config conf = <span class="hljs-keyword">new</span> Config();
+
+        <span class="hljs-keyword">if</span> (args.length == <span class="hljs-number">0</span>) {
+            LocalCluster cluster = <span class="hljs-keyword">new</span> LocalCluster();
+
+            cluster.submitTopology(TOPOLOGY_NAME, conf,
+                    builder.createTopology());
+            <span class="hljs-keyword">try</span> {
+                Thread.sleep(<span class="hljs-number">10000</span>);
+            } <span class="hljs-keyword">catch</span> (InterruptedException e) {
+            }
+            cluster.killTopology(TOPOLOGY_NAME);
+            cluster.shutdown();
+        } <span class="hljs-keyword">else</span> {
+            <span class="hljs-keyword">try</span> {
+                StormSubmitter.submitTopology(args[<span class="hljs-number">0</span>], conf,builder.createTopology());
+            } <span class="hljs-keyword">catch</span> (AlreadyAliveException e) {
+                e.printStackTrace();
+            } <span class="hljs-keyword">catch</span> (InvalidTopologyException e) {
+                e.printStackTrace();
+            }
+
+        }
+    }
+}</code></pre>
+
+<p>关键步骤为： <br>
+（1）创建TopologyBuilder，并为这个builder指定spout与bolt</p>
+
+</div><div id="wmd-preview-section-226" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs actionscript">        builder.setSpout(SENTENCE_SPOUT_ID, spout);
+        builder.setBolt(SPLIT_BOLT_ID, splitBolt).shuffleGrouping(
+                SENTENCE_SPOUT_ID);
+        builder.setBolt(COUNT_BOLT_ID, countBolt).fieldsGrouping(SPLIT_BOLT_ID,
+                <span class="hljs-keyword">new</span> Fields(<span class="hljs-string">"word"</span>));
+        builder.setBolt(REPORT_BOLT_ID, reportBolt).globalGrouping(
+                COUNT_BOLT_ID);
+</code></pre>
+
+<p>(2)创建conf对象</p>
+
+</div><div id="wmd-preview-section-227" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs ocaml">    <span class="hljs-type">Config</span> conf = <span class="hljs-keyword">new</span> <span class="hljs-type">Config</span><span class="hljs-literal">()</span>;</code></pre>
+
+<p>这个对象用于指定一些与拓扑相关的属性，如并行度、nimbus地址等。 <br>
+(3)创建并运行拓扑，这里使用了2种方式 <br>
+一是当没有参数时，建立一个localcluster，在本地上直接运行，运行10秒后，关闭集群：</p>
+
+</div><div id="wmd-preview-section-228" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs stata">LocalCluster <span class="hljs-keyword">cluster</span> = new LocalCluster();
+<span class="hljs-keyword">cluster</span>.submitTopology(TOPOLOGY_NAME, <span class="hljs-keyword">conf</span>,builder.createTopology());
+Thread.<span class="hljs-keyword">sleep</span>(10000);
+<span class="hljs-keyword">cluster</span>.killTopology(TOPOLOGY_NAME);
+<span class="hljs-keyword">cluster</span>.shutdown();</code></pre>
+
+<p>二是有参数是，将拓扑提交到集群中：</p>
+
+</div><div id="wmd-preview-section-229" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs stata">StormSubmitter.submitTopology(<span class="hljs-keyword">args</span>[0], <span class="hljs-keyword">conf</span>,builder.createTopology());</code></pre>
+
+<p>第一个参数为拓扑的名称。</p>
+
+<p>6、本地运行 <br>
+直接在eclipse中运行即可，输出结果在console中看到</p>
+
+<p>7、集群运行 <br>
+（1）编译并打包</p>
+
+</div><div id="wmd-preview-section-230" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs gradle">mvn clean <span class="hljs-keyword">compile</span></code></pre>
+
+<p>（2）把编译好的jar包上传到nimbus机器上，然后</p>
+
+</div><div id="wmd-preview-section-231" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs stylus">storm jar com<span class="hljs-class">.ljh</span><span class="hljs-class">.storm</span>.<span class="hljs-number">5</span>_stormdemo  com<span class="hljs-class">.ljh</span><span class="hljs-class">.storm</span><span class="hljs-class">.wordcount</span><span class="hljs-class">.WordCountTopology</span>  topology_name</code></pre>
+
+<p>将拓扑提交到集群中。</p></div><div id="wmd-preview-section-footnotes" class="preview-content"></div></div></body></html>
