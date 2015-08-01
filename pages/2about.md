@@ -26,7 +26,7 @@ icon: glyphicon-heart
 
 ### 关于本站   
 
-这个博客主要用于记录一下前端路上的风景。
+这个博客主要用于记录工作与学习中的心得，欢迎批评指正。
 
 模板参考自http://gaohaoyang.github.io/。感谢作者。
 
