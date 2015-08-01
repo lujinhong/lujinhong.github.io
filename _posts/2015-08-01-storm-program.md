@@ -19,8 +19,8 @@ sentence-spout—>split-bolt—>count-bolt—>report-bolt
 
 ##（一）创建spout
 
-```
-public class SentenceSpout extends BaseRichSpout {
+
+    public class SentenceSpout extends BaseRichSpout {
     private SpoutOutputCollector collector;
     private int index = 0;
     private String[] sentences = { "when i was young i'd listen to the radio",
@@ -52,8 +52,8 @@ public class SentenceSpout extends BaseRichSpout {
             //e.printStackTrace();
         }
     }
-}
-```
+    }
+
 
 上述类中，将string数组中内容逐行发送出去，主要的方法有：
 （1）open()方法完成spout的初始化工作，与bolt的prepare()方法类似
