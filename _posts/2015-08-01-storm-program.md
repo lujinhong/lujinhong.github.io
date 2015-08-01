@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "JavaScript 作用域和作用域链"
+title:  "storm编程指南"
 date:   2015-08-01 10:06:05
 categories: Front-end java
 excerpt: storm编程指南
@@ -18,8 +18,9 @@ sentence-spout—>split-bolt—>count-bolt—>report-bolt
 以下是关键代码的分析。
 
 ##（一）创建spout
-```
-public class SentenceSpout extends BaseRichSpout {
+
+
+    public class SentenceSpout extends BaseRichSpout {
     private SpoutOutputCollector collector;
     private int index = 0;
     private String[] sentences = { "when i was young i'd listen to the radio",
@@ -36,11 +37,9 @@ public class SentenceSpout extends BaseRichSpout {
             SpoutOutputCollector collector) {
         this.collector = collector;
     }
-
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declare(new Fields("sentence"));
     }
-
     public void nextTuple() {
         this.collector.emit(new Values(sentences[index]));
         index++;
@@ -53,15 +52,16 @@ public class SentenceSpout extends BaseRichSpout {
             //e.printStackTrace();
         }
     }
-}
-```
+    }
+
 
 上述类中，将string数组中内容逐行发送出去，主要的方法有：
 （1）open()方法完成spout的初始化工作，与bolt的prepare()方法类似
 （2）declareOutputFileds()定义了发送内容的字段名称与字段数量，bolt中的方法名称一样。
 （3）nextTuple()方法是对每一个需要处理的数据均会执行的操作，也bolt的executor()方法类似。它是整个逻辑处理的核心，通过emit()方法将数据发送到拓扑中的下一个节点。
 
-##（二）创建split-bolt
+##（二）创建split-bol
+
 ```
 public class SplitSentenceBolt extends BaseRichBolt{
     private OutputCollector collector;
@@ -90,6 +90,7 @@ public class SplitSentenceBolt extends BaseRichBolt{
 input.getStringByField("sentence”)可以根据上一节点发送的关键字获取到相应的内容。
 
 ##（三）创建wordcount-bolt
+
 ```
 public class WordCountBolt extends BaseRichBolt{
     private OutputCollector collector;
@@ -120,29 +121,28 @@ public class WordCountBolt extends BaseRichBolt{
 
 本类将接收到的word进行数量统计，并把结果发送出去。
 这个bolt发送了2个filed：
+
 ```
         declarer.declare(new Fields("word","count"));
         this.collector.emit(new Values(word,count));
 ```
+
 ##（四）创建report-bolt
+
 ```
 public class ReportBolt extends BaseRichBolt{
     private Map<String, Long> counts;
-
     public void prepare(Map stormConf, TopologyContext context,
             OutputCollector collector) {
         this.counts = new HashMap<String,Long>();
     }
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        
     }
-
     public void execute(Tuple input) {
         String word = input.getStringByField("word");
         Long count = input.getLongByField("count");
         counts.put(word, count);
     }
-
     public void cleanup() {
         System.out.println("Final output");
         Iterator<Entry<String, Long>> iter = counts.entrySet().iterator();
@@ -164,6 +164,7 @@ public class ReportBolt extends BaseRichBolt{
 先将结果放到一个map中，当topo被关闭时，会调用cleanup()方法，此时将map中的内容输出。
 
 ##（五）创建topo
+
 ```
 public class WordCountTopology {
     private static final String SENTENCE_SPOUT_ID = "sentence-spout";
@@ -177,9 +178,7 @@ public class WordCountTopology {
         SplitSentenceBolt splitBolt = new SplitSentenceBolt();
         WordCountBolt countBolt = new WordCountBolt();
         ReportBolt reportBolt = new ReportBolt();
-
         TopologyBuilder builder = new TopologyBuilder();
-
         builder.setSpout(SENTENCE_SPOUT_ID, spout);
         builder.setBolt(SPLIT_BOLT_ID, splitBolt).shuffleGrouping(
                 SENTENCE_SPOUT_ID);
@@ -187,12 +186,9 @@ public class WordCountTopology {
                 new Fields("word"));
         builder.setBolt(REPORT_BOLT_ID, reportBolt).globalGrouping(
                 COUNT_BOLT_ID);
-
         Config conf = new Config();
-
         if (args.length == 0) {
             LocalCluster cluster = new LocalCluster();
-
             cluster.submitTopology(TOPOLOGY_NAME, conf,
                     builder.createTopology());
             try {
@@ -209,7 +205,6 @@ public class WordCountTopology {
             } catch (InvalidTopologyException e) {
                 e.printStackTrace();
             }
-
         }
     }
 }
@@ -217,6 +212,7 @@ public class WordCountTopology {
 
 关键步骤为：
 （1）创建TopologyBuilder，并为这个builder指定spout与bolt
+
 ```
         builder.setSpout(SENTENCE_SPOUT_ID, spout);
         builder.setBolt(SPLIT_BOLT_ID, splitBolt).shuffleGrouping(
@@ -225,15 +221,18 @@ public class WordCountTopology {
                 new Fields("word"));
         builder.setBolt(REPORT_BOLT_ID, reportBolt).globalGrouping(
                 COUNT_BOLT_ID);
-               
 ```
+
 (2)创建conf对象
+
 ```
     Config conf = new Config();
 ```
+
 这个对象用于指定一些与拓扑相关的属性，如并行度、nimbus地址等。
 (3)创建并运行拓扑，这里使用了2种方式
 一是当没有参数时，建立一个localcluster，在本地上直接运行，运行10秒后，关闭集群：
+
 ```
 LocalCluster cluster = new LocalCluster();
 cluster.submitTopology(TOPOLOGY_NAME, conf,builder.createTopology());
@@ -241,10 +240,13 @@ Thread.sleep(10000);
 cluster.killTopology(TOPOLOGY_NAME);
 cluster.shutdown();
 ```
+
 二是有参数是，将拓扑提交到集群中：
+
 ```
 StormSubmitter.submitTopology(args[0], conf,builder.createTopology());
 ```
+
 第一个参数为拓扑的名称。
 
 6、本地运行
@@ -252,33 +254,41 @@ StormSubmitter.submitTopology(args[0], conf,builder.createTopology());
 
 7、集群运行
 （1）编译并打包
+
 ```
 mvn clean compile
 ```
+
 （2）把编译好的jar包上传到nimbus机器上，然后
+
 ```
 storm jar com.ljh.storm.5_stormdemo  com.ljh.storm.wordcount.WordCountTopology  topology_name
 ```
+
 将拓扑提交到集群中。
 
-（六）一些说明
-#关于分布式编程的一点说明
+#（六）一些说明
+1、关于分布式编程的一点说明
 
-@(博客文章)[java|大数据]
 
 在分布式系统中，由于有多个机器、多个进程在同时运行程序，而它们之间由于运行在不同的JVM中，因此它们之间的变量是无法共享的。
 
 以storm为例：
 如果在主程序中设置了某个变量，如
+
 ```
  topoName = args[0];
 ```
+
 在bolt中想要取得这个变量是不可能的，因为这个变量只保存在了当前的JVM中。
 因此，如果在bolt中也要使用这个变量，则必须将其放入一个由分布式系统提供的共享参数中，如：
+
 ```
 config.put(Config.TOPOLOGY_NAME, topologyName);
 ```
+
 然后，在bolt中的prepare()方法中取得这个参数：
+
 ```
 	@Override
 	public void prepare(Map conf, TridentOperationContext context) {
