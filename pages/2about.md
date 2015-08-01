@@ -18,7 +18,7 @@ icon: glyphicon-heart
 ### 联系我
 
 * email：[lu_jin_hong@163.com, lujinhong2@gmail.com](mailto:{{ site.email }})
-* github：lujinhong(https://github.com/lujinhong/)
+* github：[lujinhong](https://github.com/lujinhong/)
 * satckoverflow：lujinhong
 * csdn博客：[lujinhong2](http://blog.csdn.net/lujinhong2/)
 
