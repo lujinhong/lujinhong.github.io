@@ -10,6 +10,7 @@ icon: glyphicon-heart
 > 专注大数据运维及开发工作。
 
 6年java开发经验，还曾负责过android开发及oracle相关工作。近几年专注于大数据领域的相关工作。
+
 目前主要参与hadoop、spark、kafka、storm、hbase、hive相关工作。
 
 ---
@@ -33,6 +34,7 @@ icon: glyphicon-heart
 
 #### 友情链接
 http://blog.csdn.net/lujinhong2/
+
 https://github.com/lujinhong/
 
 Comment below to exchange link with me.  
