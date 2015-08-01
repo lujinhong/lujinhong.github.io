@@ -1,7 +1,7 @@
 ---
 layout: post
 tile:  "使用java向rsyslog发送日志"
-date:  2015-08-01 22:26:16
+date:  2015-08-01 22:29:23
 categories: java 大数据 
 excerpt: 使用java向rsyslog发送日志
 ---
@@ -16,7 +16,9 @@ excerpt: 使用java向rsyslog发送日志
 [toc]
 
 #补充rsyslog的配置方法
+
 #（一）基本使用方法
+
 1、开通rsyslog远程UDP访问
 
  vi /etc/rsyslog.conf  
