@@ -1,7 +1,7 @@
 ---
 layout: post
 tile:  "使用java向rsyslog发送日志"
-date:  2015-08-01 22:34:20
+date:  2015-08-01 22:59:14
 categories: java 大数据 
 excerpt: 使用java向rsyslog发送日志
 ---
@@ -136,6 +136,9 @@ excerpt: 使用java向rsyslog发送日志
 然后就可以使用`LOG`变量进行日志输出了
 
 吐槽几句，log4j的坑啊....
+
 （1）CLASSPATH中不能有多个log4j的版本本，否则有有奇形怪状的NoSuchMethod, NoSuchFiled， NoClassDefineFound等异常。明明是太多了，还告诉你没有
+
 （2）与slf4j的搭建，必须版本一致，如slf4j-1.7.2对应log4j-1.2.17
+
 （3）配置文件啊，如果你引用的第三方包有log4j.properties，而又没有提供给你编辑，那恭喜你，慢慢调吧。把log4j的配置写入代码吧，不要用配置文件了
