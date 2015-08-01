@@ -1,10 +1,14 @@
 ---
 layout: post
 tile:  "使用java向rsyslog发送日志"
-date:  2015-08-01 22:22:12
+date:  2015-08-01 22:26:16
 categories: java 大数据 
 excerpt: 使用java向rsyslog发送日志
 ---
+
+* content
+{:toc}
+
 #使用java向rsyslog发送日志
 
 @(博客文章)[java|大数据]
