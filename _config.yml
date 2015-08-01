@@ -1,87 +1,13 @@
-# Permalinks
-#
-# Use of `relative_permalinks` ensures post links from the index work properly.
-permalink: "/:title"
-relative_permalinks: true
-
-highlighter: pygments
-
-timezone: Europe/Helsinki
-
-# Default YAML frontmatter settings
-defaults:
-  -
-    scope:
-      path: ""
-      type: "posts"
-    values:
-      comments: true
+# Site settings
+title: 孤城空间(lujinhong)
+email: lu_jin_hong@163.com, lujinhong2@gamil.com
+description: > # this means to ignore newlines until "baseurl:"
+ good good study, day day up!!
+baseurl: "" # the subpath of your site, e.g. /blog/
+url: "http://www.lujinhong.com" # the base hostname & protocol for your site
+github_username:  lujinhong
 
 
-# Tagging settings
-tag_title_prefix:   "Posts tagged #"
-tag_title_suffix:   ""
-
-# Facebook settings
-fb_admins:          606660677
-avatar:             "/public/images/me_hires.png"
-locale:             en_US
-
-# Image settings
-image_base:          /public/images/
-
-# Do not copy these file to the output directory
-exclude: ["transfer.sh", README.md]
-
-#fb_appid:           337414769782635
-
-# Setup
-title:               Vitaly Repin
-tagline:             Sapere aude!
-url:                 "http://vrepin.org"
-paginate:            4
-baseurl:             "/vr"
-
-# Assets
-#
-# We specify the directory for Jekyll so we can use @imports.
-sass:
-  sass_dir:          _sass
-  style:            :compressed
-
-# About/contact
-author:
-  name:              Vitaly Repin
-  url:               https://twitter.com/vitalyrepin
-  email:             vitaly_repin@fsfe.org
-
-# Custom vars
-version:             1.0.0
-github:
-  repo:              https://github.com/vitalyrepin/vrepinblog
-
-# Google sitemap generation
-gems:
-  - jekyll-sitemap
-
-# Conversion
-markdown:    redcarpet
-excerpt_separator: "<!--break-->"
-
-redcarpet:
-  extensions: ["footnotes"]
-
-kramdown:
-  auto_ids: true
-
-pages_list:
-  About: '/vr/about/'
-  Hobby projects: '/vr/hobbies/'
-  Tags: '/vr/tags/'
-  Feed: '/vr/atom.xml'
-
-picture:
-  source: "assets/imgs/_fullsize"
-  output: "generated"
-  markup: "picture"
-
+# Build settings
+markdown: kramdown
+ 

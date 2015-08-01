@@ -1,0 +1,675 @@
+<!DOCTYPE html><html><head><title>kafka集群操作指南</title><meta charset='utf-8'><link href='https://dn-maxiang.qbox.me/res-min/themes/marxico.css' rel='stylesheet'></head><body><div id='preview-contents' class='note-content'>
+                        <div id="wmd-preview" class="preview-content"></div>
+                    <div id="wmd-preview-section-28" class="wmd-preview-section preview-content">
+
+</div><div id="wmd-preview-section-29" class="wmd-preview-section preview-content">
+
+<h1 id="kafka集群操作指南">kafka集群操作指南</h1>
+
+<p></p>
+
+<div><div class="toc"><div class="toc">
+<ul>
+<li><a href="#kafka集群操作指南">kafka集群操作指南</a></li>
+<li><a href="#一单机版安装">（一）单机版安装</a></li>
+<li><a href="#二集群安装">（二）集群安装</a></li>
+<li><a href="#三集群启停操作">（三）集群启停操作</a></li>
+<li><a href="#四topic相关的操作">（四）topic相关的操作</a></li>
+<li><a href="#五某个broker挂掉本机器可重启">（五）某个broker挂掉，本机器可重启</a></li>
+<li><a href="#六某个broker挂掉且无法重启需要其它机器代替">（六）某个broker挂掉且无法重启，需要其它机器代替</a></li>
+<li><a href="#七扩容">（七）扩容</a></li>
+<li><a href="#八数据迁移">（八）数据迁移</a></li>
+<li><a href="#九机器下线">（九）机器下线</a></li>
+<li><a href="#十增加副本数量">（十）增加副本数量</a></li>
+<li><a href="#十一leader的平衡">（十一）leader的平衡</a></li>
+</ul>
+</div>
+</div>
+</div>
+
+<p>本系统文章共三篇，分别为 <br>
+1、kafka集群原理介绍了以下几个方面的内容： <br>
+（1）kafka基础理论 <br>
+（2）参数配置 <br>
+（3）错误处理 <br>
+（4）kafka集群在zookeeper集群中的内容</p>
+
+<p>2、kafka集群操作介绍了kafka集群的安装与操作 <br>
+（1）单机版安装 <br>
+（2）集群安装 <br>
+（3）集群启停操作 <br>
+（4）topic相关操作 <br>
+（5）某个broker挂掉，重启本机器 <br>
+（6）某个broker挂掉且无法重启，使用其它机器代替 <br>
+（7）扩容 <br>
+（8）数据迁移 <br>
+（9）机器下线 <br>
+（10）增加副本数量 <br>
+（11）平衡leader</p>
+
+<p>3、kafka集群编程介绍了…</p>
+
+</div><div id="wmd-preview-section-30" class="wmd-preview-section preview-content">
+
+<h1 id="一单机版安装">（一）单机版安装</h1>
+
+<p>此部分不可用于生产，但新接触kafka时，可以先有个感性的认识</p>
+
+<p>Step 1: 下载Kafka</p>
+
+<p>下载最新的版本并解压.</p>
+
+</div><div id="wmd-preview-section-31" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs elixir"><span class="hljs-variable">$ </span>wget <span class="hljs-symbol">http:</span>/<span class="hljs-regexp">/mirrors.cnnic.cn/apache</span><span class="hljs-regexp">/kafka/</span><span class="hljs-number">0</span>.<span class="hljs-number">8.2</span>.<span class="hljs-number">1</span>/kafka_2.<span class="hljs-number">10</span>-<span class="hljs-number">0</span>.<span class="hljs-number">8.2</span>.<span class="hljs-number">1</span>.tgz
+<span class="hljs-variable">$ </span>tar -zxvf kafka_2.<span class="hljs-number">10</span>-<span class="hljs-number">0</span>.<span class="hljs-number">8.2</span>.<span class="hljs-number">1</span>.tgz</code></pre>
+
+<p>Step 2: 启动服务 <br>
+Kafka用到了Zookeeper，所有首先启动Zookper，下面简单的启用一个单实例的Zookkeeper服务。可以在命令的结尾加个&amp;符号，这样就可以启动后离开控制台。</p>
+
+</div><div id="wmd-preview-section-32" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs stylus">&gt; bin/zookeeper-server-start<span class="hljs-class">.sh</span> config/zookeeper<span class="hljs-class">.properties</span> &amp;</code></pre>
+
+<p>现在启动Kafka:</p>
+
+<blockquote>
+  <p>bin/kafka-server-start.sh config/server.properties</p>
+</blockquote>
+
+<p>Step 3: 创建 topic</p>
+
+<p>创建一个叫做“test”的topic，它只有一个分区，一个副本。</p>
+
+</div><div id="wmd-preview-section-33" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs brainfuck">&gt; <span class="hljs-comment">bin/kafka</span><span class="hljs-literal">-</span><span class="hljs-comment">topics</span><span class="hljs-string">.</span><span class="hljs-comment">sh</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">create</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">zookeeper</span> <span class="hljs-comment">localhost:2181</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">replication</span><span class="hljs-literal">-</span><span class="hljs-comment">factor</span> <span class="hljs-comment">1</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">partitions</span> <span class="hljs-comment">1</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">topic</span> <span class="hljs-comment">test</span>
+<span class="hljs-title">[</span><span class="hljs-comment">2015</span><span class="hljs-literal">-</span><span class="hljs-comment">06</span><span class="hljs-literal">-</span><span class="hljs-comment">04</span> <span class="hljs-comment">13:17:13</span><span class="hljs-string">,</span><span class="hljs-comment">943</span><span class="hljs-title">]</span> <span class="hljs-comment">WARN</span> <span class="hljs-comment">Connected</span> <span class="hljs-comment">to</span> <span class="hljs-comment">an</span> <span class="hljs-comment">old</span> <span class="hljs-comment">server;</span> <span class="hljs-comment">r</span><span class="hljs-literal">-</span><span class="hljs-comment">o</span> <span class="hljs-comment">mode</span> <span class="hljs-comment">will</span> <span class="hljs-comment">be</span> <span class="hljs-comment">unavailable</span> <span class="hljs-comment">(org</span><span class="hljs-string">.</span><span class="hljs-comment">apache</span><span class="hljs-string">.</span><span class="hljs-comment">zookeeper</span><span class="hljs-string">.</span><span class="hljs-comment">ClientCnxnSocket)</span>
+<span class="hljs-comment">Created</span> <span class="hljs-comment">topic</span> <span class="hljs-comment">"test"</span><span class="hljs-string">.</span></code></pre>
+
+<p>可以通过list命令查看创建的topic: </p>
+
+</div><div id="wmd-preview-section-34" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs stata">&gt; bin/kafka-topics.<span class="hljs-keyword">sh</span> --<span class="hljs-keyword">list</span> --zookeeper localhost:2181
+&gt; <span class="hljs-keyword">test</span></code></pre>
+
+<p>除了手动创建topic，还可以配置broker让它自动创建topic. <br>
+Step 4:发送消息. <br>
+Kafka 使用一个简单的命令行producer，从文件中或者从标准输入中读取消息并发送到服务端。默认的每条命令将发送一条消息。 <br>
+运行producer并在控制台中输一些消息，这些消息将被发送到服务端：</p>
+
+</div><div id="wmd-preview-section-35" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs vim">&gt; bin/kafka-console-producer.<span class="hljs-keyword">sh</span> --broker-<span class="hljs-keyword">list</span> localhos<span class="hljs-variable">t:9092</span> --topic test
+This <span class="hljs-keyword">is</span> <span class="hljs-keyword">a</span> messageThis <span class="hljs-keyword">is</span> another message</code></pre>
+
+<p>ctrl+c可以退出发送。 <br>
+默认情况下，日志数据会被放置到/tmp/kafka-logs中，每个分区一个目录 <br>
+Step 5: 启动consumer</p>
+
+<p>Kafka also has a command line consumer that will dump out messages to standard output. <br>
+Kafka也有一个命令行consumer可以读取消息并输出到标准输出：</p>
+
+</div><div id="wmd-preview-section-36" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs livescript">&gt; bin/kafka-<span class="hljs-built_in">console</span>-consumer.sh --zookeeper <span class="hljs-attribute">localhost</span>:<span class="hljs-number">2181</span> --topic test --<span class="hljs-keyword">from</span>-beginning
+This <span class="hljs-keyword">is</span> a message
+This <span class="hljs-keyword">is</span> another message</code></pre>
+
+<p>你在一个终端中运行consumer命令行，另一个终端中运行producer命令行，就可以在一个终端输入消息，另一个终端读取消息。 <br>
+这两个命令都有自己的可选参数，可以在运行的时候不加任何参数可以看到帮助信息。</p>
+
+</div><div id="wmd-preview-section-37" class="wmd-preview-section preview-content">
+
+<h1 id="二集群安装">（二）集群安装</h1>
+
+<p>注意，必须先搭建zookeeper集群</p>
+
+<p>1、使用3台机器搭建Kafka集群： <br>
+192.168.169.92 gdc-dn01-test <br>
+192.168.169.93 gdc-dn02-test <br>
+192.168.169.94 gdc-dn03-test</p>
+
+<p>2、在安装Kafka集群之前，这里没有使用Kafka自带的Zookeeper，而是独立安装了一个Zookeeper集群，也是使用这3台机器，保证Zookeeper集群正常运行。 <br>
+3、首先，在gdc-dn01-test上准备Kafka安装文件，执行如下命令：</p>
+
+</div><div id="wmd-preview-section-38" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs nginx"><span class="hljs-title">wget</span> <span class="hljs-url">http://mirrors.cnnic.cn/apache/kafka/0.8.2.1/kafka_2.10-0.8.2.1.tgz</span>
+tar xvzf kafka_2.<span class="hljs-number">10</span>-<span class="hljs-number">0.8.2.1</span>.tgz
+mv kafka_2.<span class="hljs-number">10</span>-<span class="hljs-number">0.8.2.1</span> kafka</code></pre>
+
+<p>4、修改配置文件kafka/config/server.properties，修改如下内容：</p>
+
+</div><div id="wmd-preview-section-39" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs nix">broker.<span class="hljs-variable">id=</span><span class="hljs-number">0</span>
+zookeeper.<span class="hljs-variable">connect=</span><span class="hljs-number">192.168</span>.<span class="hljs-number">169.91</span>:<span class="hljs-number">2181</span>,<span class="hljs-number">192.168</span>.<span class="hljs-number">169.92</span>:<span class="hljs-number">2181</span>,<span class="hljs-number">192.168</span>.<span class="hljs-number">169.93</span>:<span class="hljs-number">2181</span>/kafka</code></pre>
+
+<p>这里需要说明的是，默认Kafka会使用ZooKeeper默认的/路径，这样有关Kafka的ZooKeeper配置就会散落在根路径下面，如果 你有其他的应用也在使用ZooKeeper集群，查看ZooKeeper中数据可能会不直观，所以强烈建议指定一个chroot路径，直接在 zookeeper.connect配置项中指定：</p>
+
+</div><div id="wmd-preview-section-40" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs fix"><span class="hljs-attribute">zookeeper.connect</span>=<span class="hljs-string">192.168.169.91:2181,192.168.169.92:2181,192.168.169.93:2181/kafka</span></code></pre>
+
+<p>而且，需要手动在ZooKeeper中创建路径/kafka，使用如下命令连接到任意一台ZooKeeper服务器： <br>
+cd ~/zookeeper <br>
+bin/zkCli.sh <br>
+在ZooKeeper执行如下命令创建chroot路径： <br>
+create /kafka ” <br>
+这样，每次连接Kafka集群的时候（使用–zookeeper选项），也必须使用带chroot路径的连接字符串，后面会看到。</p>
+
+<p>5、然后，将配置好的安装文件同步到其他的dn02、dn03节点上：</p>
+
+</div><div id="wmd-preview-section-41" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs elixir">scp -r /usr/local/kafka_2.<span class="hljs-number">10</span>-<span class="hljs-number">0</span>.<span class="hljs-number">8.2</span>.<span class="hljs-number">1</span>/ <span class="hljs-number">192.168</span>.<span class="hljs-number">169.92</span><span class="hljs-symbol">:/home/hadoop</span>
+scp -r /usr/local/kafka_2.<span class="hljs-number">10</span>-<span class="hljs-number">0</span>.<span class="hljs-number">8.2</span>.<span class="hljs-number">1</span>/ <span class="hljs-number">192.168</span>.<span class="hljs-number">169.93</span><span class="hljs-symbol">:/home/hadoop</span></code></pre>
+
+<p>6、最后，在dn02、dn03节点上配置修改配置文件kafka/config/server.properties内容如下所示：</p>
+
+</div><div id="wmd-preview-section-42" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs applescript">broker.<span class="hljs-property">id</span>=<span class="hljs-number">1</span>  <span class="hljs-comment"># 在dn02修改</span>
+broker.<span class="hljs-property">id</span>=<span class="hljs-number">2</span>  <span class="hljs-comment"># 在dn03修改</span></code></pre>
+
+<p>因为Kafka集群需要保证各个Broker的id在整个集群中必须唯一，需要调整这个配置项的值（如果在单机上，可以通过建立多个Broker进程来模拟分布式的Kafka集群，也需要Broker的id唯一，还需要修改一些配置目录的信息）。</p>
+
+<p>7、在集群中的dn01、dn02、dn03这三个节点上分别启动Kafka，分别执行如下命令：</p>
+
+</div><div id="wmd-preview-section-43" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs stylus">bin/kafka-server-start<span class="hljs-class">.sh</span> config/server<span class="hljs-class">.properties</span> &amp;</code></pre>
+
+<p>可以通过查看日志，或者检查进程状态，保证Kafka集群启动成功。</p>
+
+<p>8、创建一个名称为my-replicated-topic5的Topic，5个分区，并且复制因子为3，执行如下命令：</p>
+
+</div><div id="wmd-preview-section-44" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs brainfuck"><span class="hljs-comment">bin/kafka</span><span class="hljs-literal">-</span><span class="hljs-comment">topics</span><span class="hljs-string">.</span><span class="hljs-comment">sh</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">create</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">zookeeper</span> <span class="hljs-comment">192</span><span class="hljs-string">.</span><span class="hljs-comment">168</span><span class="hljs-string">.</span><span class="hljs-comment">169</span><span class="hljs-string">.</span><span class="hljs-comment">91:2181</span><span class="hljs-string">,</span><span class="hljs-comment">192</span><span class="hljs-string">.</span><span class="hljs-comment">168</span><span class="hljs-string">.</span><span class="hljs-comment">169</span><span class="hljs-string">.</span><span class="hljs-comment">92:2181</span><span class="hljs-string">,</span><span class="hljs-comment">192</span><span class="hljs-string">.</span><span class="hljs-comment">168</span><span class="hljs-string">.</span><span class="hljs-comment">169</span><span class="hljs-string">.</span><span class="hljs-comment">93:2181/kafka</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">replication</span><span class="hljs-literal">-</span><span class="hljs-comment">factor</span> <span class="hljs-comment">3</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">partitions</span> <span class="hljs-comment">5</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">topic</span> <span class="hljs-comment">my</span><span class="hljs-literal">-</span><span class="hljs-comment">replicated</span><span class="hljs-literal">-</span><span class="hljs-comment">topic5</span></code></pre>
+
+<p>9、查看创建的Topic，执行如下命令：</p>
+
+</div><div id="wmd-preview-section-45" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs brainfuck"><span class="hljs-comment">bin/kafka</span><span class="hljs-literal">-</span><span class="hljs-comment">topics</span><span class="hljs-string">.</span><span class="hljs-comment">sh</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">describe</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">zookeeper</span> <span class="hljs-comment">192</span><span class="hljs-string">.</span><span class="hljs-comment">168</span><span class="hljs-string">.</span><span class="hljs-comment">169</span><span class="hljs-string">.</span><span class="hljs-comment">91:2181</span><span class="hljs-string">,</span><span class="hljs-comment">192</span><span class="hljs-string">.</span><span class="hljs-comment">168</span><span class="hljs-string">.</span><span class="hljs-comment">169</span><span class="hljs-string">.</span><span class="hljs-comment">92:2181</span><span class="hljs-string">,</span><span class="hljs-comment">192</span><span class="hljs-string">.</span><span class="hljs-comment">168</span><span class="hljs-string">.</span><span class="hljs-comment">169</span><span class="hljs-string">.</span><span class="hljs-comment">93:2181/kafka</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">topic</span> <span class="hljs-comment">my</span><span class="hljs-literal">-</span><span class="hljs-comment">replicated</span><span class="hljs-literal">-</span><span class="hljs-comment">topic5</span></code></pre>
+
+<p>结果信息如下所示：</p>
+
+</div><div id="wmd-preview-section-46" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs groovy"><span class="hljs-string">Topic:</span>my-replicated-topic5  <span class="hljs-string">PartitionCount:</span><span class="hljs-number">5</span>  <span class="hljs-string">ReplicationFactor:</span><span class="hljs-number">3</span>  <span class="hljs-string">Configs:</span>
+<span class="hljs-label"> Topic:</span> my-replicated-topic5  <span class="hljs-string">Partition:</span> <span class="hljs-number">0</span>  <span class="hljs-string">Leader:</span> <span class="hljs-number">2</span>   <span class="hljs-string">Replicas:</span> <span class="hljs-number">2</span>,<span class="hljs-number">0</span>,<span class="hljs-number">1</span>  <span class="hljs-string">Isr:</span> <span class="hljs-number">2</span>,<span class="hljs-number">0</span>,<span class="hljs-number">1</span>
+<span class="hljs-label"> Topic:</span> my-replicated-topic5  <span class="hljs-string">Partition:</span> <span class="hljs-number">1</span>  <span class="hljs-string">Leader:</span> <span class="hljs-number">0</span>  <span class="hljs-string">Replicas:</span> <span class="hljs-number">0</span>,<span class="hljs-number">1</span>,<span class="hljs-number">2</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">0</span>,<span class="hljs-number">1</span>,<span class="hljs-number">2</span>
+<span class="hljs-label"> Topic:</span> my-replicated-topic5  <span class="hljs-string">Partition:</span> <span class="hljs-number">2</span>  <span class="hljs-string">Leader:</span> <span class="hljs-number">1</span>  <span class="hljs-string">Replicas:</span> <span class="hljs-number">1</span>,<span class="hljs-number">2</span>,<span class="hljs-number">0</span>  <span class="hljs-string">Isr:</span> <span class="hljs-number">1</span>,<span class="hljs-number">2</span>,<span class="hljs-number">0</span>
+<span class="hljs-label"> Topic:</span> my-replicated-topic5  <span class="hljs-string">Partition:</span> <span class="hljs-number">3</span>  <span class="hljs-string">Leader:</span> <span class="hljs-number">2</span>   <span class="hljs-string">Replicas:</span> <span class="hljs-number">2</span>,<span class="hljs-number">1</span>,<span class="hljs-number">0</span>  <span class="hljs-string">Isr:</span> <span class="hljs-number">2</span>,<span class="hljs-number">1</span>,<span class="hljs-number">0</span>
+<span class="hljs-label"> Topic:</span> my-replicated-topic5  <span class="hljs-string">Partition:</span> <span class="hljs-number">4</span>  <span class="hljs-string">Leader:</span> <span class="hljs-number">0</span>  <span class="hljs-string">Replicas:</span> <span class="hljs-number">0</span>,<span class="hljs-number">2</span>,<span class="hljs-number">1</span>  <span class="hljs-string">Isr:</span> <span class="hljs-number">0</span>,<span class="hljs-number">2</span>,<span class="hljs-number">1</span>
+上面Leader、Replicas、Isr的含义如下：</code></pre>
+
+<p>1    Partition： 分区 <br>
+2    Leader   ： 负责读写指定分区的节点 <br>
+3    Replicas ： 复制该分区log的节点列表 <br>
+4    Isr      ： “in-sync” replicas，当前活跃的副本列表（是一个子集），并且可能成为Leader <br>
+我们可以通过Kafka自带的bin/kafka-console-producer.sh和bin/kafka-console-consumer.sh脚本，来验证演示如果发布消息、消费消息。 <br>
+11、在一个终端，启动Producer，并向我们上面创建的名称为my-replicated-topic5的Topic中生产消息，执行如下脚本：</p>
+
+</div><div id="wmd-preview-section-47" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs brainfuck"><span class="hljs-comment">bin/kafka</span><span class="hljs-literal">-</span><span class="hljs-comment">console</span><span class="hljs-literal">-</span><span class="hljs-comment">producer</span><span class="hljs-string">.</span><span class="hljs-comment">sh</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">broker</span><span class="hljs-literal">-</span><span class="hljs-comment">list</span> <span class="hljs-comment">192</span><span class="hljs-string">.</span><span class="hljs-comment">168</span><span class="hljs-string">.</span><span class="hljs-comment">169</span><span class="hljs-string">.</span><span class="hljs-comment">92:9092</span><span class="hljs-string">,</span> <span class="hljs-comment">192</span><span class="hljs-string">.</span><span class="hljs-comment">168</span><span class="hljs-string">.</span><span class="hljs-comment">169</span><span class="hljs-string">.</span><span class="hljs-comment">93:9092</span><span class="hljs-string">,</span> <span class="hljs-comment">192</span><span class="hljs-string">.</span><span class="hljs-comment">168</span><span class="hljs-string">.</span><span class="hljs-comment">169</span><span class="hljs-string">.</span><span class="hljs-comment">94:9092</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">topic</span> <span class="hljs-comment">my</span><span class="hljs-literal">-</span><span class="hljs-comment">replicated</span><span class="hljs-literal">-</span><span class="hljs-comment">topic5</span></code></pre>
+
+<p>12、在另一个终端，启动Consumer，并订阅我们上面创建的名称为my-replicated-topic5的Topic中生产的消息，执行如下脚本：</p>
+
+</div><div id="wmd-preview-section-48" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs brainfuck"><span class="hljs-comment">bin/kafka</span><span class="hljs-literal">-</span><span class="hljs-comment">console</span><span class="hljs-literal">-</span><span class="hljs-comment">consumer</span><span class="hljs-string">.</span><span class="hljs-comment">sh</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">zookeeper</span> <span class="hljs-comment">192</span><span class="hljs-string">.</span><span class="hljs-comment">168</span><span class="hljs-string">.</span><span class="hljs-comment">169</span><span class="hljs-string">.</span><span class="hljs-comment">91:2181</span><span class="hljs-string">,</span><span class="hljs-comment">192</span><span class="hljs-string">.</span><span class="hljs-comment">168</span><span class="hljs-string">.</span><span class="hljs-comment">169</span><span class="hljs-string">.</span><span class="hljs-comment">92:2181</span><span class="hljs-string">,</span><span class="hljs-comment">192</span><span class="hljs-string">.</span><span class="hljs-comment">168</span><span class="hljs-string">.</span><span class="hljs-comment">169</span><span class="hljs-string">.</span><span class="hljs-comment">93:2181/kafka</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">from</span><span class="hljs-literal">-</span><span class="hljs-comment">beginning</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">topic</span> <span class="hljs-comment">my</span><span class="hljs-literal">-</span><span class="hljs-comment">replicated</span><span class="hljs-literal">-</span><span class="hljs-comment">topic5</span></code></pre>
+
+<p>可以在Producer终端上输入字符串消息行，就可以在Consumer终端上看到消费者消费的消息内容。 <br>
+也可以参考Kafka的Producer和Consumer的Java API，通过API编码的方式来实现消息生产和消费的处理逻辑。</p>
+
+</div><div id="wmd-preview-section-49" class="wmd-preview-section preview-content">
+
+<h1 id="三集群启停操作">（三）集群启停操作</h1>
+
+<p>1、启动集群</p>
+
+</div><div id="wmd-preview-section-50" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs stylus">bin/kafka-server-start<span class="hljs-class">.sh</span> config/server<span class="hljs-class">.properties</span> &amp;</code></pre>
+
+<p>2、停止集群</p>
+
+</div><div id="wmd-preview-section-51" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs vbscript">bin/kafka-<span class="hljs-built_in">server</span>-<span class="hljs-keyword">stop</span>.sh</code></pre>
+
+<p>3、重启 <br>
+没有专用脚本，先停后启即可</p>
+
+<p>注：当然也可以使用kill命令来关闭，但使用脚本有以下好处： <br>
+(1)It will sync all its logs to disk to avoid needing to do any log recovery when it restarts (i.e. validating the checksum for all messages in the tail of the log). Log recovery takes time so this speeds up intentional restarts. <br>
+(2)It will migrate any partitions the server is the leader for to other replicas prior to shutting down. This will make the leadership transfer faster and minimize the time each partition is unavailable to a few milliseconds.</p>
+
+</div><div id="wmd-preview-section-52" class="wmd-preview-section preview-content">
+
+<h1 id="四topic相关的操作">（四）topic相关的操作</h1>
+
+<p>1、创建topic</p>
+
+</div><div id="wmd-preview-section-53" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs brainfuck"><span class="hljs-comment">bin/kafka</span><span class="hljs-literal">-</span><span class="hljs-comment">topics</span><span class="hljs-string">.</span><span class="hljs-comment">sh</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">create</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">zookeeper</span> <span class="hljs-comment">192</span><span class="hljs-string">.</span><span class="hljs-comment">168</span><span class="hljs-string">.</span><span class="hljs-comment">172</span><span class="hljs-string">.</span><span class="hljs-comment">98:2181/kafka</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">replication</span><span class="hljs-literal">-</span><span class="hljs-comment">factor</span> <span class="hljs-comment">2</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">partitions</span> <span class="hljs-comment">3</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">topic</span> <span class="hljs-comment">test_topic</span></code></pre>
+
+<p>（1）zookeeper指定其中一个节点即可，集群之间会自动同步。 <br>
+（2）–replication-factor 2 –partitions 3理论上应该是可选参数，但此脚本必须写这2个参数。 <br>
+（3）还可以使用–config &lt;name=value&gt;来指定topic的某个具体参数，以代替配置文件中的参数。如： <br>
+bin/kafka-topics.sh –create –zookeeper 192.168.172.98:2181/kafka –replication-factor 2 –partitions 3 –topic test_topic retention.bytes＝3298534883328 <br>
+指定了某个topic最大的保留日志量，单位是字节。</p>
+
+<p>2、查看全部topic <br>
+bin/kafka-topics.sh –list –zookeeper 192.168.172.98:2181/kafka</p>
+
+<p>3、查看某个topic的详细信息</p>
+
+</div><div id="wmd-preview-section-54" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs groovy"> bin<span class="hljs-regexp">/kafka-topics.sh --describe --zookeeper 192.168.172.111:2181/</span>kafka --topic test_topic
+<span class="hljs-string">Topic:</span>test_topic        <span class="hljs-string">PartitionCount:</span><span class="hljs-number">3</span>        <span class="hljs-string">ReplicationFactor:</span><span class="hljs-number">2</span>     <span class="hljs-string">Configs:</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">0</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">3</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">3</span>,<span class="hljs-number">4</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">3</span>,<span class="hljs-number">4</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">1</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">4</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">4</span>,<span class="hljs-number">5</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">4</span>,<span class="hljs-number">5</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">2</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">5</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">5</span>,<span class="hljs-number">2</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">5</span>,<span class="hljs-number">2</span></code></pre>
+
+<p>（1）第一行列出了这个topic的总体情况，如topic名称，分区数量，副本数量等。 <br>
+（2）第二行开始，每一行列出了一个分区的信息，如它是第几个分区，这个分区的leader是哪个broker，副本位于哪些broker，有哪些副本处理同步状态。</p>
+
+<p>4、启动一个console producer，用于在console中模拟输入消息</p>
+
+</div><div id="wmd-preview-section-55" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs brainfuck"><span class="hljs-comment">bin/kafka</span><span class="hljs-literal">-</span><span class="hljs-comment">console</span><span class="hljs-literal">-</span><span class="hljs-comment">producer</span><span class="hljs-string">.</span><span class="hljs-comment">sh</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">broker</span><span class="hljs-literal">-</span><span class="hljs-comment">list</span> <span class="hljs-comment">192</span><span class="hljs-string">.</span><span class="hljs-comment">168</span><span class="hljs-string">.</span><span class="hljs-comment">172</span><span class="hljs-string">.</span><span class="hljs-comment">111:9092</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">topic</span> <span class="hljs-comment">test_topic</span> </code></pre>
+
+<p>5、启动一个console consumer，用于模拟接收消息，并在console中输出</p>
+
+</div><div id="wmd-preview-section-56" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs brainfuck"><span class="hljs-comment">bin/kafka</span><span class="hljs-literal">-</span><span class="hljs-comment">console</span><span class="hljs-literal">-</span><span class="hljs-comment">consumer</span><span class="hljs-string">.</span><span class="hljs-comment">sh</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">zookeeper</span> <span class="hljs-comment">192</span><span class="hljs-string">.</span><span class="hljs-comment">168</span><span class="hljs-string">.</span><span class="hljs-comment">172</span><span class="hljs-string">.</span><span class="hljs-comment">111:2181/kafka</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">topic</span> <span class="hljs-comment">test_topic</span></code></pre>
+
+<p>此脚本可以用于验证一个topic的数据情况，看消息是否正常流入等。</p>
+
+<p>6、删除一个topic</p>
+
+</div><div id="wmd-preview-section-57" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs brainfuck"><span class="hljs-comment">bin/kafka</span><span class="hljs-literal">-</span><span class="hljs-comment">topics</span><span class="hljs-string">.</span><span class="hljs-comment">sh</span>  <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">delete</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">zookeeper</span> <span class="hljs-comment">192</span><span class="hljs-string">.</span><span class="hljs-comment">168</span><span class="hljs-string">.</span><span class="hljs-comment">172</span><span class="hljs-string">.</span><span class="hljs-comment">98:2181/kafka</span>  <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">topic</span> <span class="hljs-comment">test_topic</span></code></pre>
+
+<p>（1）配置文件中必须delete.topic.enable=true，否则只会标记为删除，而不是真正删除。 <br>
+（2）执行此脚本的时候，topic的数据会同时被删除。如果由于某些原因导致topic的数据不能完全删除（如其中一个broker down了）,此时topic只会被marked for deletion，而不会真正删除。此时创建同名的topic会有冲突。</p>
+
+<p>7、修改topic <br>
+使用—-alert原则上可以修改任何配置，以下列出了一些常用的修改选项： <br>
+（1）改变分区数量</p>
+
+</div><div id="wmd-preview-section-58" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs brainfuck"><span class="hljs-comment">bin/kafka</span><span class="hljs-literal">-</span><span class="hljs-comment">topics</span><span class="hljs-string">.</span><span class="hljs-comment">sh</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">alter</span>  <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">zookeeper</span> <span class="hljs-comment">192</span><span class="hljs-string">.</span><span class="hljs-comment">168</span><span class="hljs-string">.</span><span class="hljs-comment">172</span><span class="hljs-string">.</span><span class="hljs-comment">98:2181/kafka</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">topic</span> <span class="hljs-comment">test_topic</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">partitions</span> <span class="hljs-comment">4</span></code></pre>
+
+<p>（2）增加、修改或者删除一个配置参数 <br>
+ <code> <br>
+ bin/kafka-topics.sh —alter --zookeeper 192.168.172.98:2181/kafka  --topic my_topic_name --config key=value <br>
+ bin/kafka-topics.sh —alter --zookeeper 192.168.172.98:2181/kafka  --topic my_topic_name --deleteConfig key <br>
+</code></p>
+
+</div><div id="wmd-preview-section-59" class="wmd-preview-section preview-content">
+
+<h1 id="五某个broker挂掉本机器可重启">（五）某个broker挂掉，本机器可重启</h1>
+
+<p>【结论】如果一个broker挂掉，且可以重启则处理步骤如下： <br>
+（1）重启kafka进程 <br>
+（2）执行rebalance（由于已经设置配置项自动执行balance，因此此步骤一般可忽略）</p>
+
+<p>详细分析见下面操作过程。 <br>
+1、topic的情况</p>
+
+</div><div id="wmd-preview-section-60" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs groovy">bin<span class="hljs-regexp">/kafka-topics.sh --describe --zookeeper 192.168.172.111:2181/</span>kafka --topic test_topic
+<span class="hljs-string">Topic:</span>test_topic        <span class="hljs-string">PartitionCount:</span><span class="hljs-number">3</span>        <span class="hljs-string">ReplicationFactor:</span><span class="hljs-number">2</span>     <span class="hljs-string">Configs:</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">0</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">5</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">5</span>,<span class="hljs-number">2</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">5</span>,<span class="hljs-number">2</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">1</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">2</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">2</span>,<span class="hljs-number">3</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">2</span>,<span class="hljs-number">3</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">2</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">3</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">3</span>,<span class="hljs-number">4</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">3</span>,<span class="hljs-number">4</span></code></pre>
+
+<p>集群中有4台机器，id为【2-5】,topic 有3个分区，每个分区2个副本，leader分别位于2，3，5中。</p>
+
+<p>2、模拟机器down，kill掉进程 <br>
+分区0的leader位于id=5的broker中，kill掉这台机器的kafka进程 <br>
+kill -9 <em>**</em></p>
+
+<p>3、再次查看topic的情况</p>
+
+</div><div id="wmd-preview-section-61" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs groovy">bin<span class="hljs-regexp">/kafka-topics.sh --describe --zookeeper 192.168.172.111:2181/</span>kafka --topic test_topic
+<span class="hljs-string">Topic:</span>test_topic        <span class="hljs-string">PartitionCount:</span><span class="hljs-number">3</span>        <span class="hljs-string">ReplicationFactor:</span><span class="hljs-number">2</span>     <span class="hljs-string">Configs:</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">0</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">2</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">5</span>,<span class="hljs-number">2</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">2</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">1</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">2</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">2</span>,<span class="hljs-number">3</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">2</span>,<span class="hljs-number">3</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">2</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">3</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">3</span>,<span class="hljs-number">4</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">3</span>,<span class="hljs-number">4</span></code></pre>
+
+<p>可以看到，分区0的leader已经移到id=2的机器上了，它的副本位于2，5这2台机器上，但处于同步状态的只有id=2这台机器。</p>
+
+<p>4、重启kafka进程</p>
+
+</div><div id="wmd-preview-section-62" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs stylus">bin/kafka-server-start<span class="hljs-class">.sh</span> config/server<span class="hljs-class">.properties</span> &amp;</code></pre>
+
+<p>5、再次查看状态</p>
+
+</div><div id="wmd-preview-section-63" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs groovy">bin<span class="hljs-regexp">/kafka-topics.sh --describe --zookeeper 192.168.172.111:2181/</span>kafka --topic test_topic
+<span class="hljs-string">Topic:</span>test_topic        <span class="hljs-string">PartitionCount:</span><span class="hljs-number">3</span>        <span class="hljs-string">ReplicationFactor:</span><span class="hljs-number">2</span>     <span class="hljs-string">Configs:</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">0</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">2</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">5</span>,<span class="hljs-number">2</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">2</span>,<span class="hljs-number">5</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">1</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">2</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">2</span>,<span class="hljs-number">3</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">2</span>,<span class="hljs-number">3</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">2</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">3</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">3</span>,<span class="hljs-number">4</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">3</span>,<span class="hljs-number">4</span></code></pre>
+
+<p>发现分区0的2个副本都已经处于同步状态，但leader依然为id=2的broker。</p>
+
+<p>6、执行leader平衡 <br>
+详见leader的平衡部分。</p>
+
+</div><div id="wmd-preview-section-64" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs stylus">bin/kafka-preferred-replica-election<span class="hljs-class">.sh</span> --zookeeper <span class="hljs-number">192.168</span>.<span class="hljs-number">172.98</span>:<span class="hljs-number">2181</span>/kafka</code></pre>
+
+<p>如果配置文件中</p>
+
+</div><div id="wmd-preview-section-65" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs stylus">    <span class="hljs-attribute">auto</span><span class="hljs-class">.leader</span><span class="hljs-class">.rebalance</span><span class="hljs-class">.enable</span>=true</code></pre>
+
+<p>则此步骤不需要执行。</p>
+
+<p>7、重新查看topic</p>
+
+</div><div id="wmd-preview-section-66" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs groovy">bin<span class="hljs-regexp">/kafka-topics.sh --describe --zookeeper 192.168.172.111:2181/</span>kafka --topic test_topic
+<span class="hljs-string">Topic:</span>test_topic        <span class="hljs-string">PartitionCount:</span><span class="hljs-number">3</span>        <span class="hljs-string">ReplicationFactor:</span><span class="hljs-number">2</span>     <span class="hljs-string">Configs:</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">0</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">5</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">5</span>,<span class="hljs-number">2</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">2</span>,<span class="hljs-number">5</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">1</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">2</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">2</span>,<span class="hljs-number">3</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">2</span>,<span class="hljs-number">3</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">2</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">3</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">3</span>,<span class="hljs-number">4</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">3</span>,<span class="hljs-number">4</span></code></pre>
+
+<p>此时leader已经回到了id=5的broker，一切恢复正常。</p>
+
+</div><div id="wmd-preview-section-67" class="wmd-preview-section preview-content">
+
+<h1 id="六某个broker挂掉且无法重启需要其它机器代替">（六）某个broker挂掉且无法重启，需要其它机器代替</h1>
+
+<p>【结论】当一个broker挂掉，需要换机器时，采用以下步骤： <br>
+1、将新机器kafka配置文件中的broker.id设置为与原机器一样 <br>
+2、启动kafka，注意kafka保存数据的目录不会自动创建，需要手工创建</p>
+
+<p>详细分析过程如下： <br>
+1、初始化机器，主要包括用户创建，kafka文件的复制等。</p>
+
+<p>2、修改config/server.properties文件 <br>
+注意，只需要修改一个配置broker.id，且此配置必须与挂掉的那台机器相同，因为kafka是通过broker.id来区分集群中的机器的。此处设为</p>
+
+</div><div id="wmd-preview-section-68" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs applescript">broker.<span class="hljs-property">id</span>=<span class="hljs-number">5</span></code></pre>
+
+<p>3、查看topic的当前状态</p>
+
+</div><div id="wmd-preview-section-69" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs groovy">bin<span class="hljs-regexp">/kafka-topics.sh --describe --zookeeper 192.168.172.111:2181/</span>kafka --topic test_topic
+<span class="hljs-string">Topic:</span>test_topic        <span class="hljs-string">PartitionCount:</span><span class="hljs-number">3</span>        <span class="hljs-string">ReplicationFactor:</span><span class="hljs-number">2</span>     <span class="hljs-string">Configs:</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">0</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">5</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">5</span>,<span class="hljs-number">2</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">2</span>,<span class="hljs-number">5</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">1</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">2</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">2</span>,<span class="hljs-number">3</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">2</span>,<span class="hljs-number">3</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">2</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">3</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">3</span>,<span class="hljs-number">4</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">3</span>,<span class="hljs-number">4</span></code></pre>
+
+<p>当前topic有3个分区，其中分区1的leader位于id=5的机器上。</p>
+
+<p>4、关掉id=5的机器 <br>
+kill -9 **  用于模拟机器突然down <br>
+或者：</p>
+
+</div><div id="wmd-preview-section-70" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs stylus">bin/kafka-server-stop<span class="hljs-class">.sh</span>  </code></pre>
+
+<p>用于正常关闭</p>
+
+<p>5、查看topic的状态</p>
+
+</div><div id="wmd-preview-section-71" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs groovy">bin<span class="hljs-regexp">/kafka-topics.sh --describe --zookeeper 192.168.172.111:2181/</span>kafka --topic test_topic
+<span class="hljs-string">Topic:</span>test_topic        <span class="hljs-string">PartitionCount:</span><span class="hljs-number">3</span>        <span class="hljs-string">ReplicationFactor:</span><span class="hljs-number">2</span>     <span class="hljs-string">Configs:</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">0</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">2</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">5</span>,<span class="hljs-number">2</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">2</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">1</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">2</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">2</span>,<span class="hljs-number">3</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">2</span>,<span class="hljs-number">3</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">2</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">3</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">3</span>,<span class="hljs-number">4</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">3</span>,<span class="hljs-number">4</span></code></pre>
+
+<p>可见，topic的分区0的leader已经迁移到了id=2的机器上，且处于同步的机器只有一个了。</p>
+
+<p>6、启动新机器</p>
+
+</div><div id="wmd-preview-section-72" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs stylus">nohup bin/kafka-server-start<span class="hljs-class">.sh</span> config/server<span class="hljs-class">.properties</span> &amp;</code></pre>
+
+<p>7、再看topic的状态</p>
+
+</div><div id="wmd-preview-section-73" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs groovy">bin<span class="hljs-regexp">/kafka-topics.sh --describe --zookeeper 192.168.172.111:2181/</span>kafka --topic test_topic
+<span class="hljs-string">Topic:</span>test_topic        <span class="hljs-string">PartitionCount:</span><span class="hljs-number">3</span>        <span class="hljs-string">ReplicationFactor:</span><span class="hljs-number">2</span>     <span class="hljs-string">Configs:</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">0</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">2</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">5</span>,<span class="hljs-number">2</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">2</span>,<span class="hljs-number">5</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">1</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">2</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">2</span>,<span class="hljs-number">3</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">2</span>,<span class="hljs-number">3</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">2</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">3</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">3</span>,<span class="hljs-number">4</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">3</span>,<span class="hljs-number">4</span></code></pre>
+
+<p>id=5的机器也处于同步状态了，但还需要将leader恢复到这台机器上。</p>
+
+<p>8、执行leader平衡 <br>
+详见leader的平衡部分。</p>
+
+</div><div id="wmd-preview-section-74" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs stylus">bin/kafka-preferred-replica-election<span class="hljs-class">.sh</span> --zookeeper <span class="hljs-number">192.168</span>.<span class="hljs-number">172.98</span>:<span class="hljs-number">2181</span>/kafka</code></pre>
+
+<p>如果配置文件中</p>
+
+</div><div id="wmd-preview-section-75" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs stylus">    <span class="hljs-attribute">auto</span><span class="hljs-class">.leader</span><span class="hljs-class">.rebalance</span><span class="hljs-class">.enable</span>=true</code></pre>
+
+<p>则此步骤不需要执行。</p>
+
+<p>9、done</p>
+
+</div><div id="wmd-preview-section-76" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs groovy"> bin<span class="hljs-regexp">/kafka-topics.sh --describe --zookeeper 192.168.172.111:2181/</span>kafka --topic test_topic
+<span class="hljs-string">Topic:</span>test_topic        <span class="hljs-string">PartitionCount:</span><span class="hljs-number">3</span>        <span class="hljs-string">ReplicationFactor:</span><span class="hljs-number">2</span>     <span class="hljs-string">Configs:</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">0</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">5</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">5</span>,<span class="hljs-number">2</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">2</span>,<span class="hljs-number">5</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">1</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">2</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">2</span>,<span class="hljs-number">3</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">2</span>,<span class="hljs-number">3</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">2</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">3</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">3</span>,<span class="hljs-number">4</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">3</span>,<span class="hljs-number">4</span></code></pre>
+
+<p>所有内容都恢复了</p>
+
+</div><div id="wmd-preview-section-77" class="wmd-preview-section preview-content">
+
+<h1 id="七扩容">（七）扩容</h1>
+
+<p>将一台机器加入kafka集群很容易，只需要为它分配一个独立的broker id，然后启动它即可。但是这些新加入的机器上面并没有任何的分区数据，所以除非将现有数据移动这些机器上，否则它不会做任何工作，直到创建新topic。因此，当你往集群加入机器时，你应该将其它机器上的一部分数据往这台机器迁移。 <br>
+数据迁移的工作需要手工初始化，然后自动完成。它的原理如下：当新机器起来后，kafka将其它机器的一些分区复制到这个机器上，并作为follower，当这个新机器完成复制并成为in-sync状态后，那些被复制的分区的一个副本会被删除。（都不会成为leader?)</p>
+
+<p>1、将新机器kafka配置文件中的broker.id设置为与原机器一样 <br>
+2、启动kafka，注意kafka保存数据的目录不会自动创建，需要手工创建 <br>
+此时新建的topic都会优先分配leader到新增的机器上，但原有的topic不会将分区迁移过来。 <br>
+3、数据迁移，请见数据迁移部分。</p>
+
+</div><div id="wmd-preview-section-78" class="wmd-preview-section preview-content">
+
+<h1 id="八数据迁移">（八）数据迁移</h1>
+
+<p>以下步骤用于将现有数据迁移到新的broker中，假设需要将test_topic与streaming_ma30_sdc的全部分区迁移到新的broker中（id 为6和7） <br>
+1、创建一个json文件，用于指定哪些topic将被迁移过去 <br>
+cat  topics-to-move.json</p>
+
+</div><div id="wmd-preview-section-79" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs json">{"<span class="hljs-attribute">topics</span>": <span class="hljs-value">[
+ {"<span class="hljs-attribute">topic</span>": <span class="hljs-value"><span class="hljs-string">"test_topic"</span></span>},
+ {"<span class="hljs-attribute">topic</span>": <span class="hljs-value"><span class="hljs-string">"streaming_ma30_sdc"</span></span>}
+ ]</span>,
+ "<span class="hljs-attribute">version</span>":<span class="hljs-value"><span class="hljs-number">1</span>
+</span>}</code></pre>
+
+<p>注意全角，半角符号，或者中文引号之类的问题。</p>
+
+<p>2、先generate迁移后的结果，检查一下是不是你要想的效果</p>
+
+</div><div id="wmd-preview-section-80" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs mel">bin/kafka-reassign-partitions.sh --zookeeper <span class="hljs-number">192.168</span><span class="hljs-number">.172</span><span class="hljs-number">.98</span>:<span class="hljs-number">2181</span>/kafka --topics-to-<span class="hljs-keyword">move</span>-json-<span class="hljs-keyword">file</span> topics-to-<span class="hljs-keyword">move</span>.json --broker-list <span class="hljs-string">"6,7"</span> —generate
+Current <span class="hljs-keyword">partition</span> replica assignment
+{<span class="hljs-string">"version"</span>:<span class="hljs-number">1</span>,<span class="hljs-string">"partitions"</span>:[{<span class="hljs-string">"topic"</span>:<span class="hljs-string">"streaming_ma30_sdc"</span>,<span class="hljs-string">"partition"</span>:<span class="hljs-number">2</span>,<span class="hljs-string">"replicas"</span>:[<span class="hljs-number">2</span>]},{<span class="hljs-string">"topic"</span>:<span class="hljs-string">"test_topic"</span>,<span class="hljs-string">"partition"</span>:<span class="hljs-number">0</span>,<span class="hljs-string">"replicas"</span>:[<span class="hljs-number">5</span>,<span class="hljs-number">2</span>]},{<span class="hljs-string">"topic"</span>:<span class="hljs-string">"test_topic"</span>,<span class="hljs-string">"partition"</span>:<span class="hljs-number">2</span>,<span class="hljs-string">"replicas"</span>:[<span class="hljs-number">3</span>,<span class="hljs-number">4</span>]},{<span class="hljs-string">"topic"</span>:<span class="hljs-string">"streaming_ma30_sdc"</span>,<span class="hljs-string">"partition"</span>:<span class="hljs-number">1</span>,<span class="hljs-string">"replicas"</span>:[<span class="hljs-number">5</span>]},{<span class="hljs-string">"topic"</span>:<span class="hljs-string">"streaming_ma30_sdc"</span>,<span class="hljs-string">"partition"</span>:<span class="hljs-number">0</span>,<span class="hljs-string">"replicas"</span>:[<span class="hljs-number">4</span>]},{<span class="hljs-string">"topic"</span>:<span class="hljs-string">"test_topic"</span>,<span class="hljs-string">"partition"</span>:<span class="hljs-number">1</span>,<span class="hljs-string">"replicas"</span>:[<span class="hljs-number">2</span>,<span class="hljs-number">3</span>]},{<span class="hljs-string">"topic"</span>:<span class="hljs-string">"streaming_ma30_sdc"</span>,<span class="hljs-string">"partition"</span>:<span class="hljs-number">3</span>,<span class="hljs-string">"replicas"</span>:[<span class="hljs-number">3</span>]},{<span class="hljs-string">"topic"</span>:<span class="hljs-string">"streaming_ma30_sdc"</span>,<span class="hljs-string">"partition"</span>:<span class="hljs-number">4</span>,<span class="hljs-string">"replicas"</span>:[<span class="hljs-number">4</span>]}]}
+
+Proposed <span class="hljs-keyword">partition</span> reassignment configuration
+{<span class="hljs-string">"version"</span>:<span class="hljs-number">1</span>,<span class="hljs-string">"partitions"</span>:[{<span class="hljs-string">"topic"</span>:<span class="hljs-string">"test_topic"</span>,<span class="hljs-string">"partition"</span>:<span class="hljs-number">0</span>,<span class="hljs-string">"replicas"</span>:[<span class="hljs-number">7</span>,<span class="hljs-number">6</span>]},{<span class="hljs-string">"topic"</span>:<span class="hljs-string">"streaming_ma30_sdc"</span>,<span class="hljs-string">"partition"</span>:<span class="hljs-number">2</span>,<span class="hljs-string">"replicas"</span>:[<span class="hljs-number">7</span>]},{<span class="hljs-string">"topic"</span>:<span class="hljs-string">"test_topic"</span>,<span class="hljs-string">"partition"</span>:<span class="hljs-number">2</span>,<span class="hljs-string">"replicas"</span>:[<span class="hljs-number">7</span>,<span class="hljs-number">6</span>]},{<span class="hljs-string">"topic"</span>:<span class="hljs-string">"streaming_ma30_sdc"</span>,<span class="hljs-string">"partition"</span>:<span class="hljs-number">1</span>,<span class="hljs-string">"replicas"</span>:[<span class="hljs-number">6</span>]},{<span class="hljs-string">"topic"</span>:<span class="hljs-string">"test_topic"</span>,<span class="hljs-string">"partition"</span>:<span class="hljs-number">1</span>,<span class="hljs-string">"replicas"</span>:[<span class="hljs-number">6</span>,<span class="hljs-number">7</span>]},{<span class="hljs-string">"topic"</span>:<span class="hljs-string">"streaming_ma30_sdc"</span>,<span class="hljs-string">"partition"</span>:<span class="hljs-number">0</span>,<span class="hljs-string">"replicas"</span>:[<span class="hljs-number">7</span>]},{<span class="hljs-string">"topic"</span>:<span class="hljs-string">"streaming_ma30_sdc"</span>,<span class="hljs-string">"partition"</span>:<span class="hljs-number">4</span>,<span class="hljs-string">"replicas"</span>:[<span class="hljs-number">7</span>]},{<span class="hljs-string">"topic"</span>:<span class="hljs-string">"streaming_ma30_sdc"</span>,<span class="hljs-string">"partition"</span>:<span class="hljs-number">3</span>,<span class="hljs-string">"replicas"</span>:[<span class="hljs-number">6</span>]}]}</code></pre>
+
+<p>分别列出了当前的状态以及迁移后的状态。 <br>
+把这2个json分别保存下来，第一个用来万一需要roll back的时候使用，第二个用来执行迁移。</p>
+
+<p>3、执行迁移</p>
+
+</div><div id="wmd-preview-section-81" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs stata">bin/kafka-reassign-partitions.<span class="hljs-keyword">sh</span> --zookeeper 192.168.172.98:2181/kafka --reassignment-json-<span class="hljs-keyword">file</span> <span class="hljs-keyword">expand</span>-<span class="hljs-keyword">cluster</span>-reassignment.json --execute
+其中<span class="hljs-keyword">expand</span>-<span class="hljs-keyword">cluster</span>-reassignment.json为保存上面第二段json的文件。</code></pre>
+
+<p>4、查看迁移过程</p>
+
+</div><div id="wmd-preview-section-82" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs applescript">bin/kafka-reassign-partitions.sh <span class="hljs-comment">--zookeeper 192.168.172.98:2181/kafka --reassignment-json-file expand-cluster-reassignment.json --verify</span>
+Status <span class="hljs-keyword">of</span> partition reassignment:
+Reassignment <span class="hljs-keyword">of</span> partition [streaming_ma30_sdc,<span class="hljs-number">0</span>] <span class="hljs-keyword">is</span> still <span class="hljs-keyword">in</span> progress
+Reassignment <span class="hljs-keyword">of</span> partition [streaming_ma30_sdc,<span class="hljs-number">4</span>] <span class="hljs-keyword">is</span> still <span class="hljs-keyword">in</span> progress
+Reassignment <span class="hljs-keyword">of</span> partition [test_topic,<span class="hljs-number">2</span>] completed successfully
+Reassignment <span class="hljs-keyword">of</span> partition [test_topic,<span class="hljs-number">0</span>] completed successfully
+Reassignment <span class="hljs-keyword">of</span> partition [streaming_ma30_sdc,<span class="hljs-number">3</span>] <span class="hljs-keyword">is</span> still <span class="hljs-keyword">in</span> progress
+Reassignment <span class="hljs-keyword">of</span> partition [streaming_ma30_sdc,<span class="hljs-number">1</span>] <span class="hljs-keyword">is</span> still <span class="hljs-keyword">in</span> progress
+Reassignment <span class="hljs-keyword">of</span> partition [test_topic,<span class="hljs-number">1</span>] completed successfully
+Reassignment <span class="hljs-keyword">of</span> partition [streaming_ma30_sdc,<span class="hljs-number">2</span>] <span class="hljs-keyword">is</span> still <span class="hljs-keyword">in</span> progress</code></pre>
+
+<p>5、当所有迁移的完成后，查看一下结果是不是你想要的</p>
+
+</div><div id="wmd-preview-section-83" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs groovy">bin<span class="hljs-regexp">/kafka-topics.sh --describe --zookeeper 192.168.172.111:2181/</span>kafka --topic test_topic
+<span class="hljs-string">Topic:</span>test_topic        <span class="hljs-string">PartitionCount:</span><span class="hljs-number">3</span>        <span class="hljs-string">ReplicationFactor:</span><span class="hljs-number">2</span>     <span class="hljs-string">Configs:</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">0</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">7</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">7</span>,<span class="hljs-number">6</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">6</span>,<span class="hljs-number">7</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">1</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">6</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">6</span>,<span class="hljs-number">7</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">6</span>,<span class="hljs-number">7</span>
+<span class="hljs-label">        Topic:</span> test_topic       <span class="hljs-string">Partition:</span> <span class="hljs-number">2</span>    <span class="hljs-string">Leader:</span> <span class="hljs-number">7</span>       <span class="hljs-string">Replicas:</span> <span class="hljs-number">7</span>,<span class="hljs-number">6</span>   <span class="hljs-string">Isr:</span> <span class="hljs-number">6</span>,<span class="hljs-number">7</span></code></pre>
+
+<p>完成</p>
+
+<p>以上步骤将整个topic迁移，也可以只迁移其中一个或者多个分区。 <br>
+以下将test_topic的分区1移到broker id为2，3的机器,分区2移到broker id为4,5的机器. <br>
+【其实还是整个topic迁移好一点，不然准备迁移文件会很麻烦】 <br>
+1、准备迁移配置文件 <br>
+cat custom-reassignment.json</p>
+
+</div><div id="wmd-preview-section-84" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs json">{"<span class="hljs-attribute">version</span>":<span class="hljs-value"><span class="hljs-number">1</span></span>,"<span class="hljs-attribute">partitions</span>":<span class="hljs-value">[{"<span class="hljs-attribute">topic</span>":<span class="hljs-value"><span class="hljs-string">"test_topic"</span></span>,"<span class="hljs-attribute">partition</span>":<span class="hljs-value"><span class="hljs-number">1</span></span>,"<span class="hljs-attribute">replicas</span>":<span class="hljs-value">[<span class="hljs-number">2</span>,<span class="hljs-number">3</span>]</span>},{"<span class="hljs-attribute">topic</span>":<span class="hljs-value"><span class="hljs-string">"test_topic"</span></span>,"<span class="hljs-attribute">partition</span>":<span class="hljs-value"><span class="hljs-number">2</span></span>,"<span class="hljs-attribute">replicas</span>":<span class="hljs-value">[<span class="hljs-number">4</span>,<span class="hljs-number">5</span>]</span>}]</span>}</code></pre>
+
+<p>3、执行迁移</p>
+
+</div><div id="wmd-preview-section-85" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs stylus">bin/kafka-reassign-partitions<span class="hljs-class">.sh</span> --zookeeper <span class="hljs-number">192.168</span>.<span class="hljs-number">172.98</span>:<span class="hljs-number">2181</span>/kafka --reassignment-json-file custom-reassignment<span class="hljs-class">.json</span> --execute</code></pre>
+
+<p>4、查看迁移过程</p>
+
+</div><div id="wmd-preview-section-86" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs stylus">bin/kafka-reassign-partitions<span class="hljs-class">.sh</span> --zookeeper <span class="hljs-number">192.168</span>.<span class="hljs-number">172.98</span>:<span class="hljs-number">2181</span>/kafka --reassignment-json-file custom-reassignment<span class="hljs-class">.json</span> --verify</code></pre>
+
+<p>5、查看迁移结果</p>
+
+</div><div id="wmd-preview-section-87" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs brainfuck"><span class="hljs-comment">bin/kafka</span><span class="hljs-literal">-</span><span class="hljs-comment">topics</span><span class="hljs-string">.</span><span class="hljs-comment">sh</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">describe</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">zookeeper</span> <span class="hljs-comment">192</span><span class="hljs-string">.</span><span class="hljs-comment">168</span><span class="hljs-string">.</span><span class="hljs-comment">172</span><span class="hljs-string">.</span><span class="hljs-comment">111:2181/kafka</span> <span class="hljs-literal">-</span><span class="hljs-literal">-</span><span class="hljs-comment">topic</span> <span class="hljs-comment">test_topic</span></code></pre>
+
+</div><div id="wmd-preview-section-88" class="wmd-preview-section preview-content">
+
+<h1 id="九机器下线">（九）机器下线</h1>
+
+<p>当一个机器下线时，kafka并不会自动将这台机器上的副本迁移到其它机器上，因此，我们需要手工进行迁移。这个过程会相当的无聊，kafka打算在0.8.2版本中添加此特性。 <br>
+有了吗？再找找。如果只是替换机器则不会有这个问题。</p>
+
+</div><div id="wmd-preview-section-89" class="wmd-preview-section preview-content">
+
+<h1 id="十增加副本数量">（十）增加副本数量</h1>
+
+<p>Increasing replication factor</p>
+
+<p>Increasing the replication factor of an existing partition is easy. Just specify the extra replicas in the custom reassignment json file and use it with the –execute option to increase the replication factor of the specified partitions. <br>
+For instance, the following example increases the replication factor of partition 0 of topic foo from 1 to 3. Before increasing the replication factor, the partition’s only replica existed on broker 5. As part of increasing the replication factor, we will add more replicas on brokers 6 and 7.</p>
+
+<p>The first step is to hand craft the custom reassignment plan in a json file-</p>
+
+<blockquote>
+  <p>cat increase-replication-factor.json <br>
+  {“version”:1, <br>
+   “partitions”:[{“topic”:”foo”,”partition”:0,”replicas”:[5,6,7]}]}</p>
+</blockquote>
+
+<p>Then, use the json file with the –execute option to start the reassignment process-</p>
+
+<blockquote>
+  <p>bin/kafka-reassign-partitions.sh –zookeeper localhost:2181 –reassignment-json-file increase-replication-factor.json –execute <br>
+  Current partition replica assignment</p>
+</blockquote>
+
+<p>{“version”:1, <br>
+ “partitions”:[{“topic”:”foo”,”partition”:0,”replicas”:[5]}]}</p>
+
+<p>Save this to use as the –reassignment-json-file option during rollback <br>
+Successfully started reassignment of partitions <br>
+{“version”:1, <br>
+ “partitions”:[{“topic”:”foo”,”partition”:0,”replicas”:[5,6,7]}]} <br>
+The –verify option can be used with the tool to check the status of the partition reassignment. Note that the same increase-replication-factor.json (used with the –execute option) should be used with the –verify option</p>
+
+<p>bin/kafka-reassign-partitions.sh –zookeeper localhost:2181 –reassignment-json-file increase-replication-factor.json –verify <br>
+Status of partition reassignment: <br>
+Reassignment of partition [foo,0] completed successfully <br>
+You can also verify the increase in replication factor with the kafka-topics tool-</p>
+
+<blockquote>
+  <p>bin/kafka-topics.sh –zookeeper localhost:2181 –topic foo –describe <br>
+  Topic:foo   PartitionCount:1    ReplicationFactor:3 Configs: <br>
+      Topic: foo  Partition: 0    Leader: 5   Replicas: 5,6,7 Isr: 5,6,7</p>
+</blockquote>
+
+</div><div id="wmd-preview-section-90" class="wmd-preview-section preview-content">
+
+<h1 id="十一leader的平衡">（十一）leader的平衡</h1>
+
+<p>当一个broker down掉时，所有本来将它作为leader的分区会被将leader转移到其它broker。这意味着当这个broker重启时，它将不再担任何分区的leader，kafka的client也不会从这个broker来读取消息，导致资源的浪费。 <br>
+为了避免这种情况的发生，kafka增加了一个标记：优先副本（preferred replicas）。如果一个分区有3个副本，且这3个副本的优先级别分别为1，5，9，则1会作为leader。为了使kafka集群恢复默认的leader，需要运行以下命令：</p>
+
+</div><div id="wmd-preview-section-91" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs stylus">bin/kafka-preferred-replica-election<span class="hljs-class">.sh</span> --zookeeper <span class="hljs-number">192.168</span>.<span class="hljs-number">172.98</span>:<span class="hljs-number">2181</span>/kafka</code></pre>
+
+<p>或者可以设置以下配置项，leader 会自动执行balance： <br>
+<code> <br>
+    auto.leader.rebalance.enable=true <br>
+</code> <br>
+这配置默认即为空，但需要经过一段时间后才会触发，约半小时。</p></div><div id="wmd-preview-section-footnotes" class="preview-content"></div></div></body></html>

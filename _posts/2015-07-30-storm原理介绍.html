@@ -1,0 +1,359 @@
+<!DOCTYPE html><html><head><title>storm原理介绍</title><meta charset='utf-8'><link href='https://dn-maxiang.qbox.me/res-min/themes/marxico.css' rel='stylesheet'></head><body><div id='preview-contents' class='note-content'>
+                        <div id="wmd-preview" class="preview-content"></div>
+                    <div id="wmd-preview-section-255" class="wmd-preview-section preview-content">
+
+</div><div id="wmd-preview-section-256" class="wmd-preview-section preview-content">
+
+<h1 id="storm原理介绍">storm原理介绍</h1>
+
+<p></p>
+
+<div><div class="toc"><div class="toc">
+<ul>
+<li><a href="#storm原理介绍">storm原理介绍</a></li>
+<li><a href="#一原理介绍">一、原理介绍</a></li>
+<li><a href="#二配置">二、配置</a></li>
+<li><a href="#三并行度">三、并行度</a><ul>
+<li><a href="#一storm拓扑的并行度可以从以下4个维度进行设置">（一）storm拓扑的并行度可以从以下4个维度进行设置：</a></li>
+<li><a href="#二并行度的设置方法">（二）并行度的设置方法</a></li>
+<li><a href="#三示例">（三）示例</a></li>
+</ul>
+</li>
+<li><a href="#四分组">四、分组</a></li>
+<li><a href="#五可靠性">五、可靠性</a><ul>
+<li><a href="#一spout">（一）spout</a></li>
+<li><a href="#二bolt">（二）bolt</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+</div>
+
+</div><div id="wmd-preview-section-257" class="wmd-preview-section preview-content">
+
+<h1 id="一原理介绍">一、原理介绍</h1>
+
+<p>待补充</p>
+
+</div><div id="wmd-preview-section-258" class="wmd-preview-section preview-content">
+
+<h1 id="二配置">二、配置</h1>
+
+<p>完整的默认配置文件见下面defaluts.yaml，若需要修改，则在storm.yaml中修改。重要参数如下： <br>
+1、storm.zookeeper.servers：指定使用哪个zookeeper集群</p>
+
+</div><div id="wmd-preview-section-259" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs haml">storm.zookeeper.servers:
+     -<span class="ruby"> <span class="hljs-string">"gdc-nn01-test"</span>
+</span>     -<span class="ruby"> <span class="hljs-string">"gdc-dn01-test"</span>
+</span>     -<span class="ruby"> <span class="hljs-string">"gdc-dn02-test”</span></span></code></pre>
+
+<p>2、nimbus.host：指定nimbus是哪台机器</p>
+
+</div><div id="wmd-preview-section-260" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs http"><span class="hljs-attribute">nimbus.host</span>: <span class="hljs-string">"gdc-nn01-test”</span></code></pre>
+
+<p>3、指定supervisor在哪个端口上运行worker，每个端口可运行一个worker，因此有多少个配置端口，则每个supervisor有多少个slot（即可运行多少个worker）</p>
+
+</div><div id="wmd-preview-section-261" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs haml">supervisor.slots.ports:
+    -<span class="ruby"> <span class="hljs-number">6700</span>
+</span>    -<span class="ruby"> <span class="hljs-number">6701</span>
+</span>    -<span class="ruby"> <span class="hljs-number">6702</span>
+</span>    -<span class="ruby"> <span class="hljs-number">6703</span>
+</span>storm.local.dir: "/home/hadoop/storm/data"</code></pre>
+
+<p>4、jvm设置</p>
+
+</div><div id="wmd-preview-section-262" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs vim">#jvm setting
+nimbus.childopt<span class="hljs-variable">s:</span><span class="hljs-string">"-4096m”
+</span>supervisor.childopt<span class="hljs-variable">s:</span><span class="hljs-string">"-Xmx4096m"</span>
+nimubs.childopt<span class="hljs-variable">s:</span>"-Xmx3072m”</code></pre>
+
+<p>除此外，还有ui.childopts，logviewer.childopts</p>
+
+<p>附完整配置文件：defaults.yaml</p>
+
+</div><div id="wmd-preview-section-263" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs avrasm"><span class="hljs-preprocessor">########### These all have default values as shown</span>
+<span class="hljs-preprocessor">########### Additional configuration goes into storm.yaml</span>
+<span class="hljs-label">java.library.path:</span> <span class="hljs-string">"/usr/local/lib:/opt/local/lib:/usr/lib"</span>
+
+<span class="hljs-preprocessor">### storm.* configs are general configurations</span>
+<span class="hljs-preprocessor"># the local dir is where jars are kept</span>
+<span class="hljs-label">storm.local.dir:</span> <span class="hljs-string">"storm-local"</span>
+<span class="hljs-label">storm.zookeeper.servers:</span>
+    - <span class="hljs-string">"localhost"</span>
+<span class="hljs-label">storm.zookeeper.port:</span> <span class="hljs-number">2181</span>
+<span class="hljs-label">storm.zookeeper.root:</span> <span class="hljs-string">"/storm"</span>
+<span class="hljs-label">storm.zookeeper.session.timeout:</span> <span class="hljs-number">20000</span>
+<span class="hljs-label">storm.zookeeper.connection.timeout:</span> <span class="hljs-number">15000</span>
+<span class="hljs-label">storm.zookeeper.retry.times:</span> <span class="hljs-number">5</span>
+<span class="hljs-label">storm.zookeeper.retry.interval:</span> <span class="hljs-number">1000</span>
+<span class="hljs-label">storm.zookeeper.retry.intervalceiling.millis:</span> <span class="hljs-number">30000</span>
+<span class="hljs-label">storm.cluster.mode:</span> <span class="hljs-string">"distributed"</span> <span class="hljs-preprocessor"># can be distributed or local</span>
+<span class="hljs-label">storm.local.mode.zmq:</span> false
+<span class="hljs-label">storm.thrift.transport:</span> <span class="hljs-string">"backtype.storm.security.auth.SimpleTransportPlugin"</span>
+<span class="hljs-label">storm.messaging.transport:</span> <span class="hljs-string">"backtype.storm.messaging.netty.Context"</span>
+<span class="hljs-label">storm.meta.serialization.delegate:</span> <span class="hljs-string">"backtype.storm.serialization.DefaultSerializationDelegate"</span>
+
+<span class="hljs-preprocessor">### nimbus.* configs are for the master</span>
+<span class="hljs-label">nimbus.host:</span> <span class="hljs-string">"localhost"</span>
+<span class="hljs-label">nimbus.thrift.port:</span> <span class="hljs-number">6627</span>
+<span class="hljs-label">nimbus.thrift.max_buffer_size:</span> <span class="hljs-number">1048576</span>
+<span class="hljs-label">nimbus.childopts:</span> <span class="hljs-string">"-Xmx1024m"</span>
+<span class="hljs-label">nimbus.task.timeout.secs:</span> <span class="hljs-number">30</span>
+<span class="hljs-label">nimbus.supervisor.timeout.secs:</span> <span class="hljs-number">60</span>
+<span class="hljs-label">nimbus.monitor.freq.secs:</span> <span class="hljs-number">10</span>
+<span class="hljs-label">nimbus.cleanup.inbox.freq.secs:</span> <span class="hljs-number">600</span>
+<span class="hljs-label">nimbus.inbox.jar.expiration.secs:</span> <span class="hljs-number">3600</span>
+<span class="hljs-label">nimbus.task.launch.secs:</span> <span class="hljs-number">120</span>
+<span class="hljs-label">nimbus.reassign:</span> true
+<span class="hljs-label">nimbus.file.copy.expiration.secs:</span> <span class="hljs-number">600</span>
+<span class="hljs-label">nimbus.topology.validator:</span> <span class="hljs-string">"backtype.storm.nimbus.DefaultTopologyValidator"</span>
+
+<span class="hljs-preprocessor">### ui.* configs are for the master</span>
+<span class="hljs-label">ui.port:</span> <span class="hljs-number">8080</span>
+<span class="hljs-label">ui.childopts:</span> <span class="hljs-string">"-Xmx768m"</span>
+<span class="hljs-label">logviewer.port:</span> <span class="hljs-number">8000</span>
+<span class="hljs-label">logviewer.childopts:</span> <span class="hljs-string">"-Xmx128m"</span>
+<span class="hljs-label">logviewer.appender.name:</span> <span class="hljs-string">"A1"</span>
+
+<span class="hljs-label">drpc.port:</span> <span class="hljs-number">3772</span>
+<span class="hljs-label">drpc.worker.threads:</span> <span class="hljs-number">64</span>
+<span class="hljs-label">drpc.queue.size:</span> <span class="hljs-number">128</span>
+<span class="hljs-label">drpc.invocations.port:</span> <span class="hljs-number">3773</span>
+<span class="hljs-label">drpc.request.timeout.secs:</span> <span class="hljs-number">600</span>
+<span class="hljs-label">drpc.childopts:</span> <span class="hljs-string">"-Xmx768m"</span>
+<span class="hljs-label">transactional.zookeeper.root:</span> <span class="hljs-string">"/transactional"</span>
+<span class="hljs-label">transactional.zookeeper.servers:</span> null
+<span class="hljs-label">transactional.zookeeper.port:</span> null
+
+<span class="hljs-preprocessor">### supervisor.* configs are for node supervisors</span>
+<span class="hljs-preprocessor"># Define the amount of workers that can be run on this machine. Each worker is assigned a port to use for communication</span>
+<span class="hljs-label">supervisor.slots.ports:</span>
+    - <span class="hljs-number">6700</span>
+    - <span class="hljs-number">6701</span>
+    - <span class="hljs-number">6702</span>
+    - <span class="hljs-number">6703</span>
+<span class="hljs-label">supervisor.childopts:</span> <span class="hljs-string">"-Xmx256m"</span>
+<span class="hljs-preprocessor">#how long supervisor will wait to ensure that a worker process is started</span>
+<span class="hljs-label">supervisor.worker.start.timeout.secs:</span> <span class="hljs-number">120</span>
+<span class="hljs-preprocessor">#how long between heartbeats until supervisor considers that worker dead and tries to restart it</span>
+<span class="hljs-label">supervisor.worker.timeout.secs:</span> <span class="hljs-number">30</span>
+<span class="hljs-preprocessor">#how frequently the supervisor checks on the status of the processes it's monitoring and restarts if necessary</span>
+<span class="hljs-label">supervisor.monitor.frequency.secs:</span> <span class="hljs-number">3</span>
+<span class="hljs-preprocessor">#how frequently the supervisor heartbeats to the cluster state (for nimbus)</span>
+<span class="hljs-label">supervisor.heartbeat.frequency.secs:</span> <span class="hljs-number">5</span>
+<span class="hljs-label">supervisor.enable:</span> true
+<span class="hljs-preprocessor">### worker.* configs are for task workers</span>
+<span class="hljs-label">worker.childopts:</span> <span class="hljs-string">"-Xmx768m"</span>
+<span class="hljs-label">worker.heartbeat.frequency.secs:</span> <span class="hljs-number">1</span>
+
+<span class="hljs-preprocessor"># control how many worker receiver threads we need per worker</span>
+<span class="hljs-label">topology.worker.receiver.thread.count:</span> <span class="hljs-number">1</span>
+<span class="hljs-label">task.heartbeat.frequency.secs:</span> <span class="hljs-number">3</span>
+<span class="hljs-label">task.refresh.poll.secs:</span> <span class="hljs-number">10</span>
+<span class="hljs-label">zmq.threads:</span> <span class="hljs-number">1</span>
+<span class="hljs-label">zmq.linger.millis:</span> <span class="hljs-number">5000</span>
+<span class="hljs-label">zmq.hwm:</span> <span class="hljs-number">0</span>
+<span class="hljs-label">storm.messaging.netty.server_worker_threads:</span> <span class="hljs-number">1</span>
+<span class="hljs-label">storm.messaging.netty.client_worker_threads:</span> <span class="hljs-number">1</span>
+<span class="hljs-label">storm.messaging.netty.buffer_size:</span> <span class="hljs-number">5242880</span> <span class="hljs-preprocessor">#5MB buffer</span>
+<span class="hljs-preprocessor"># Since nimbus.task.launch.secs and supervisor.worker.start.timeout.secs are 120, other workers should also wait at least that long before giving up on connecting to the other worker. The reconnection period need also be bigger than storm.zookeeper.session.timeout(default is 20s), so that we can abort the reconnection when the target worker is dead.</span>
+<span class="hljs-label">storm.messaging.netty.max_retries:</span> <span class="hljs-number">30</span>
+<span class="hljs-label">storm.messaging.netty.max_wait_ms:</span> <span class="hljs-number">1000</span>
+<span class="hljs-label">storm.messaging.netty.min_wait_ms:</span> <span class="hljs-number">100</span>
+
+<span class="hljs-preprocessor"># If the Netty messaging layer is busy(netty internal buffer not writable), the Netty client will try to batch message as more as possible up to the size of storm.messaging.netty.transfer.batch.size bytes, otherwise it will try to flush message as soon as possible to reduce latency.</span>
+<span class="hljs-label">storm.messaging.netty.transfer.batch.size:</span> <span class="hljs-number">262144</span>
+
+<span class="hljs-preprocessor"># We check with this interval that whether the Netty channel is writable and try to write pending messages if it is.</span>
+<span class="hljs-label">storm.messaging.netty.flush.check.interval.ms:</span> <span class="hljs-number">10</span>
+<span class="hljs-preprocessor">### topology.* configs are for specific executing storms</span>
+<span class="hljs-label">topology.enable.message.timeouts:</span> true
+<span class="hljs-label">topology.debug:</span> false
+<span class="hljs-label">topology.workers:</span> <span class="hljs-number">1</span>
+<span class="hljs-label">topology.acker.executors:</span> null
+<span class="hljs-label">topology.tasks:</span> null
+<span class="hljs-preprocessor"># maximum amount of time a message has to complete before it's considered failed</span>
+<span class="hljs-label">topology.message.timeout.secs:</span> <span class="hljs-number">30</span>
+<span class="hljs-label">topology.multilang.serializer:</span> <span class="hljs-string">"backtype.storm.multilang.JsonSerializer"</span>
+<span class="hljs-label">topology.skip.missing.kryo.registrations:</span> false
+<span class="hljs-label">topology.max.task.parallelism:</span> null
+<span class="hljs-label">topology.max.spout.pending:</span> null
+<span class="hljs-label">topology.state.synchronization.timeout.secs:</span> <span class="hljs-number">60</span>
+<span class="hljs-label">topology.stats.sample.rate:</span> <span class="hljs-number">0.05</span>
+<span class="hljs-label">topology.builtin.metrics.bucket.size.secs:</span> <span class="hljs-number">60</span>
+<span class="hljs-label">topology.fall.back.on.java.serialization:</span> true
+<span class="hljs-label">topology.worker.childopts:</span> null
+<span class="hljs-label">topology.executor.receive.buffer.size:</span> <span class="hljs-number">1024</span> <span class="hljs-preprocessor">#batched</span>
+<span class="hljs-label">topology.executor.send.buffer.size:</span> <span class="hljs-number">1024</span> <span class="hljs-preprocessor">#individual messages</span>
+<span class="hljs-label">topology.receiver.buffer.size:</span> <span class="hljs-number">8</span> <span class="hljs-preprocessor"># setting it too high causes a lot of problems (heartbeat thread gets starved, throughput plummets)</span>
+<span class="hljs-label">topology.transfer.buffer.size:</span> <span class="hljs-number">1024</span> <span class="hljs-preprocessor"># batched</span>
+<span class="hljs-label">topology.tick.tuple.freq.secs:</span> null
+<span class="hljs-label">topology.worker.shared.thread.pool.size:</span> <span class="hljs-number">4</span>
+<span class="hljs-label">topology.disruptor.wait.strategy:</span> <span class="hljs-string">"com.lmax.disruptor.BlockingWaitStrategy"</span>
+<span class="hljs-label">topology.spout.wait.strategy:</span> <span class="hljs-string">"backtype.storm.spout.SleepSpoutWaitStrategy"</span>
+<span class="hljs-label">topology.sleep.spout.wait.strategy.time.ms:</span> <span class="hljs-number">1</span>
+<span class="hljs-label">topology.error.throttle.interval.secs:</span> <span class="hljs-number">10</span>
+<span class="hljs-label">topology.max.error.report.per.interval:</span> <span class="hljs-number">5</span>
+<span class="hljs-label">topology.kryo.factory:</span> <span class="hljs-string">"backtype.storm.serialization.DefaultKryoFactory"</span>
+<span class="hljs-label">topology.tuple.serializer:</span> <span class="hljs-string">"backtype.storm.serialization.types.ListDelegateSerializer"</span>
+<span class="hljs-label">topology.trident.batch.emit.interval.millis:</span> <span class="hljs-number">500</span>
+<span class="hljs-label">topology.classpath:</span> null
+<span class="hljs-label">topology.environment:</span> null
+<span class="hljs-label">dev.zookeeper.path:</span> <span class="hljs-string">"/tmp/dev-storm-zookeeper"</span>&lt;/span&gt;</code></pre>
+
+</div><div id="wmd-preview-section-264" class="wmd-preview-section preview-content">
+
+<h1 id="三并行度">三、并行度</h1>
+
+</div><div id="wmd-preview-section-265" class="wmd-preview-section preview-content">
+
+<h2 id="一storm拓扑的并行度可以从以下4个维度进行设置">（一）storm拓扑的并行度可以从以下4个维度进行设置：</h2>
+
+<p>1、node（服务器）：指一个storm集群中的supervisor服务器数量。 <br>
+2、worker（jvm进程）：指整个拓扑中worker进程的总数量，这些数量会随机的平均分配到各个node。 <br>
+3、executor（线程）：指某个spout或者bolt的总线程数量，这些线程会被随机平均的分配到各个worker。 <br>
+4、task（spout/bolt实例）：task是spout和bolt的实例，它们的nextTuple()和execute()方法会被executors线程调用。除非明确指定，storm会给每个executor分配一个task。如果设置了多个task，即一个线程持有了多个spout/bolt实例. <br>
+注意：以上设置的都是总数量，这些数量会被平均分配到各自的宿主上，而不是设置每个宿主进行多少个进程/线程。详见下面的例子。</p>
+
+</div><div id="wmd-preview-section-266" class="wmd-preview-section preview-content">
+
+<h2 id="二并行度的设置方法">（二）并行度的设置方法</h2>
+
+<p>1、node：买机器吧，然后加入集群中…… <br>
+2、worker：Config#setNumWorkers() 或者配置项 TOPOLOGY_WORKERS <br>
+3、executor：Topology.setSpout()/.setBolt() <br>
+4、task：ComponentConfigurationDeclarer#setNumWorker()</p>
+
+</div><div id="wmd-preview-section-267" class="wmd-preview-section preview-content">
+
+<h2 id="三示例">（三）示例</h2>
+
+</div><div id="wmd-preview-section-268" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs actionscript"><span class="hljs-comment">// 创建topology  </span>
+TopologyBuilder builder = <span class="hljs-keyword">new</span> TopologyBuilder();  
+builder.setSpout(<span class="hljs-string">"kafka-reader"</span>, <span class="hljs-keyword">new</span> KafkaSpout(spoutConf), <span class="hljs-number">5</span>);<span class="hljs-comment">//设置executor数量为5  </span>
+builder.setBolt(<span class="hljs-string">"filter-bolt"</span>, <span class="hljs-keyword">new</span> FilterBolt(), <span class="hljs-number">3</span>).shuffleGrouping(  
+        <span class="hljs-string">"kafka-reader"</span>);<span class="hljs-comment">//设置executor数量为3  </span>
+builder.setBolt(<span class="hljs-string">"log-splitter"</span>, <span class="hljs-keyword">new</span> LogSplitterBolt(), <span class="hljs-number">3</span>)  
+        .shuffleGrouping(<span class="hljs-string">"filter-bolt"</span>);<span class="hljs-comment">//设置executor数量为5  </span>
+builder.setBolt(<span class="hljs-string">"hdfs-bolt"</span>, hdfsBolt, <span class="hljs-number">2</span>).shuffleGrouping(  
+        <span class="hljs-string">"log-splitter"</span>);<span class="hljs-comment">//设置executor数量为2  </span>
+
+<span class="hljs-comment">// 启动topology  </span>
+Config conf = <span class="hljs-keyword">new</span> Config();  
+conf.put(Config.NIMBUS_HOST, nimbusHost);  
+conf.setNumWorkers(<span class="hljs-number">3</span>);      <span class="hljs-comment">//设置worker数量  </span>
+StormSubmitter.submitTopologyWithProgressBar(topologyName, conf,  
+        builder.createTopology());  </code></pre>
+
+<p>1、通过config.setNumWorkers(3)将worker进程数量设置为3，假设集群中有3个node，则每个node会运行一个worker。 <br>
+2、executor的数量分别为： <br>
+spout:5 <br>
+filter-bolt:3 <br>
+log-splitter:3 <br>
+hdfs-bolt:2 <br>
+总共为13个executor，这13个executor会被随机分配到各个worker中去。 <br>
+注：这段代码是从kafka中读取消息源的，而这个topic在kafka中的分区数量设置为5，因此这里spout的线程ovtn为5. <br>
+3、这个示例都没有单独设置task的数量，即使用每个executor一个task的默认配置。若需要设置，可以：</p>
+
+</div><div id="wmd-preview-section-269" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs ocaml">        builder.setBolt(<span class="hljs-string">"log-splitter"</span>, <span class="hljs-keyword">new</span> <span class="hljs-type">LogSplitterBolt</span><span class="hljs-literal">()</span>, <span class="hljs-number">3</span>)
+                .shuffleGrouping(<span class="hljs-string">"filter-bolt"</span>).setNumTasks(<span class="hljs-number">5</span>);</code></pre>
+
+<p>来进行设置，这5个task会被分配到3个executor中。</p>
+
+<p>（四）并行度的动态调整 <br>
+对storm拓扑的并行度进行调整有2种方法： <br>
+1、kill topo—&gt;修改代码—&gt;编译—&gt;提交拓扑 <br>
+2、动态调整 <br>
+第1种方法太不方便了，有时候topo不能说kill就kill，另外，如果加几台机器，难道要把所有topo kill掉还要修改代码？ <br>
+因此storm提供了动态调整的方法,动态调整有2种方法： <br>
+1、ui方式：进入某个topo的页面，点击rebalance即可，此时可以看到topo的状态是rebalancing。但此方法只是把进程、线程在各个机器上重新分配，即适用于增加机器，或者减少机器的情形，不能调整worker数量、executor数量等 <br>
+2、cli方式：storm rebalance <br>
+举个例子</p>
+
+</div><div id="wmd-preview-section-270" class="wmd-preview-section preview-content">
+
+<pre class="prettyprint hljs-dark"><code class="hljs stata">storm rebalance toponame -<span class="hljs-keyword">n</span> 7 -<span class="hljs-keyword">e</span> filter-bolt=6 -<span class="hljs-keyword">e</span> hdfs-bolt=8</code></pre>
+
+<p>将topo的worker数量设置为7，并将filter-bolt与hdfs-bolt的executor数量分别设置为6、8. <br>
+此时，查看topo的状态是rebalancing，调整完成后，可以看到3台机器中的worker数量分别为3、2、2</p>
+
+</div><div id="wmd-preview-section-271" class="wmd-preview-section preview-content">
+
+<h1 id="四分组">四、分组</h1>
+
+<p>Storm通过分组来指定数据的流向，主要指定了每个bolt消费哪个流，以及如何消费。 <br>
+storm内置了7个分组方式，并提供了CustomStreamGrouping来创建自定义的分组方式。 <br>
+1、随机分组 shuffleGrouping <br>
+这种方式会随机分发tuple给bolt的各个task，每个task接到到相同数量的tuple。</p>
+
+<p>2、字段分组 fieldGrouping <br>
+按照指定字段进行分组，该字段具有相同组的会被发送到同一个task，具体不同值的可能会被发送到不同的task。</p>
+
+<p>3、全复制分组 allGrouping（或者叫广播分组） <br>
+每一个tuple都会发送给所有的task，必须小心使用。</p>
+
+<p>4、全局分组 globlaGrouping <br>
+将所有tuple均发送到唯一的task，会选取task ID最小的task。这种分组下，设置task的并行度是没有意义的。另外，这种方式很有可能引起瓶颈。</p>
+
+<p>5、不分组 noneGrouping  <br>
+留作以后使用，目前也随机分组相同。</p>
+
+<p>6、指向型分组 directGrouping（或者叫直接分组） <br>
+数据源会调用emitDirect()方法来判断一个tuple应该由哪个storm组件来接收，只能在声明了是指向型的数据流上使用。</p>
+
+<p>7、本地或随机分组 localOrShuffleGrouping <br>
+如果接收bolt在同一个进程中存在一个或者多个task，tuple会优先发送给这个task。否则和随机分组一样。相对于随机分组，此方式可以减少网络传输，从而提高性能。</p>
+
+</div><div id="wmd-preview-section-272" class="wmd-preview-section preview-content">
+
+<h1 id="五可靠性">五、可靠性</h1>
+
+<p>可靠性：spout发送的消息会被拓扑树上的所有节点ack，否则会一直重发。 <br>
+导致重发的原因有2个： <br>
+（1）fail()被调用 <br>
+（2）超时无响应。 <br>
+完整的可靠性示例请参考storm blueprint的chapter1 v4代码，或者P22，或者参考从零开始学storm P102页的例子。 <br>
+关键步骤如下：</p>
+
+</div><div id="wmd-preview-section-273" class="wmd-preview-section preview-content">
+
+<h2 id="一spout">（一）spout</h2>
+
+<p>1、创建一个map，用于记录已经发送的tuple的id与内容，此为待确认的tuple列表。 <br>
+private ConcurrentHashMap&lt;UUID,Values&gt; pending; <br>
+2、发送tuple时，加上一个参数用于指明该tuple的id。同时，将此tuple加入map中，等待确认。 <br>
+UUID msgId = UUID.randomUUID(); <br>
+this.pending.put(msgId,values); <br>
+this.collector.emit(values,msgId); <br>
+3、定义ack方法与fail方法。 <br>
+ack方法将tuple从map中取出 <br>
+this.pending.remove(msgId); <br>
+fail方法将tuple重新发送 <br>
+this.collector.emit(this.pending.get(msgId),msgId);</p>
+
+<p>对于没回复的tuple，会定时重新发送。</p>
+
+</div><div id="wmd-preview-section-274" class="wmd-preview-section preview-content">
+
+<h2 id="二bolt">（二）bolt</h2>
+
+<p>处理该tuple的每个bolt均需要增加以下内容： <br>
+1、emit时，增加一个参数anchor，指定响应的tuple <br>
+collector.emit(tuple,new Values(word)); <br>
+2、确认接收到的tuple已经处理 <br>
+this.collector.ack(tuple);</p></div><div id="wmd-preview-section-footnotes" class="preview-content"></div></div></body></html>
