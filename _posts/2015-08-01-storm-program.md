@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "JavaScript 作用域和作用域链"
+title:  "storm编程指南"
 date:   2015-08-01 10:06:05
 categories: Front-end java
 excerpt: storm编程指南
