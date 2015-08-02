@@ -5,5 +5,6 @@
 模板参考自https://github.com/Gaohaoyang/gaohaoyang.github.io，一并感谢。
 
 喜欢本博客的，请点击start，谢谢。
-同时，请关注绑定的域名www.lujinhong.com
+
+同时，请关注绑定的域名http://www.lujinhong.com
 
