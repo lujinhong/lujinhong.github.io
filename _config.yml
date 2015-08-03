@@ -11,7 +11,7 @@ description: 专注大数据
 # url: "http://yourdomain.com" # the base hostname & protocol for your site
 # twitter_username: jekyllrb
 github_username:  lujinhong
-permalink: /:year/:month/:day/:title/
+permalink: none
 
 # Build settings
 markdown: kramdown
