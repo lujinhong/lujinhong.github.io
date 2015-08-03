@@ -18,12 +18,12 @@
 # storm.zookeeper.servers:
 #     - "server1"
 #     - "server2"
-#
+# 
 # nimbus.host: "nimbus"
-#
-#
+# 
+# 
 # ##### These may optionally be filled in:
-#
+#    
 ## List of custom serializations
 # topology.kryo.register:
 #     - org.mycompany.MyType
@@ -49,23 +49,23 @@
 #
 
 
-storm.zookeeper.servers:
+storm.zookeeper.servers: 
      - "123.58.172.98"
-     - "123.58.172.111"
-     - "123.58.172.114"
-     - "123.58.172.116"
-     - "123.58.172.117"
+     - "123.58.172.111" 
+     - "123.58.172.114" 
+     - "123.58.172.116" 
+     - "123.58.172.117"      
 
-nimbus.host: "123.58.172.98"
-supervisor.slots.ports:
-    - 6700
-    - 6701
-    - 6702
-    - 6703
-    - 6704
-    - 6705
+nimbus.host: "123.58.172.98" 
+supervisor.slots.ports: 
+    - 6700 
+    - 6701 
+    - 6702 
+    - 6703 
+    - 6704 
+    - 6705 
     - 6706
-    - 6707
+    - 6707 
 
 storm.local.dir: "/home/data/storm"
 #jvm setting
