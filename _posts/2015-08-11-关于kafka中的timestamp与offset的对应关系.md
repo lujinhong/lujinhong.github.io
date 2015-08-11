@@ -1,7 +1,7 @@
 ---
 layout: post
 tile:  "关于kafka中的timestamp与offset的对应关系"
-date:  2015-08-11 15:26:38
+date:  2015-08-11 15:45:45
 categories: storm kafka 大数据 
 excerpt: 关于kafka中的timestamp与offset的对应关系
 ---
@@ -21,6 +21,7 @@ kafka通过offset记录每条日志的偏移量，详见《Kafka文件存储机�
 先简单重温一下kafka的物理存储机制：每个topic分成多个分区，而一个分区对应磁盘中的一个目录，目录中会有多个文件，比如：
 
      00000000000000000000.index  00000000000000000000.log  00000000000001145974.index  00000000000001145974.log
+     
 可以看出来，每个segment file其实有2部分，一个index文件，一个log文件。文件名是这个文件内的第一个消息的offset。log文件记录的是实际的消息内容。而index对log文件作了索引，当需要查看某个消息时，如果指定offset，很容易就定位到log文件中的具体位置。详见上面说的文章。
 
 但正如刚才所说，用户不知道offset，而只知道时间，所以就需要转换了。
