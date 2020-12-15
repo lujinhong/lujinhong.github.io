@@ -24,3 +24,13 @@ paginate_path: "page:num"
 # highlighter: pygments
 # highlighter: rouge
 # highlighter: false
+
+gitalk:
+  enable: true    #是否开启评论
+  clientID: 48fa08a9ee25f7c3eae6                            #生成的clientID
+  clientSecret: 227e095c01f8f630f92873fccaa893c94dd25143    #生成的clientSecret
+  repo: lujinhong.github.io    #仓库名称
+  owner: lujinhong    #github用户名
+  admin: lujinhong	
+  distractionFreeMode: true #是否启用阴影遮罩
+
