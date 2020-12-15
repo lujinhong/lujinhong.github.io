@@ -1,0 +1,478 @@
+
+
+[TOC]
+
+
+
+# 1、逻辑回归
+
+FTRL本质上是一种优化方法，最早由google提出并用于CTR预估。常被用于逻辑回归的优化，因此先简单介绍一下逻辑回归的内容。
+## 1.1 sigmoid函数
+由于二分类结果是1或者0，这与数学的阶跃函数很类似，但是阶跃函数在x=0的位置会发生突变，这个突变在数学上很难处理。所以一般使用sigmoid函数来拟合：
+
+$$
+g(z)={\frac 1{1+e^{-z}}} \qquad(1)
+$$
+
+具体应用到逻辑回归算法中：
+
+$$
+z={\omega}_0+{\omega}_1x_1+{\omega}_2x_2+......+{\omega}_nx_n=\sum_{i=0}^n{\omega}_ix_i=\mathbf{\omega^TX}   \qquad(2)
+$$
+
+其中$x_i$表示样本属性（对于我们而言，就是标签IP）的值， $\omega_i$表示这个属性对应的系数（也就是算法需要计算的内容）。注意这里将$x_0$与$\omega_0$也代入了上述公式，其中前者恒为1。于是问题就变成了在训练样本中，已知属性x与最终分类结果y（1或者0）时，如何求得这些系数 $\omega_i$，使得损失最小。
+
+## 1.2 极大似然估计MLE与损失函数
+在机器学习理论中，损失函数（loss function）是用来衡量模型的预测值$f(x)$与真实值$Y$的不一致程度，它是一个非负实值函数，损失函数越小，模型越优（还需考虑过拟合等问题）。损失函数是经验风险函数的核心部分，也是结构风险函数重要组成部分。模型的结构风险函数包括了经验风险项和正则项，通常可以表示成如下式子
+
+$$
+\omega^* = \arg \min_\omega \frac{1}{m}{}\sum_{i=1}^{m} L(y_i, f(x_i; \omega)) + \lambda\  \Phi(\omega)  \qquad(3)
+$$
+
+其中m表示样本的数量。对于逻辑回归，其loss function是log损失，这可以通过极大似然估计进行推导得到。
+
+首先，给定一个样本$x$，可以使用一个线性函数对自变量进行线性组合，即上述的（2）式子：
+$$
+z={\omega}_0+{\omega}_1x_1+{\omega}_2x_2+......+{\omega}_nx_n=\sum_{i=0}^n{\omega}_ix_i=\mathbf{\omega^TX} \qquad(4)
+$$
+
+根据sigmoid函数，我们可以得出预测函数的表达式为：
+$$
+h_{\omega}(x) = g(\omega^Tx) = \frac{1}{1 + e^{-\omega^Tx}}  \qquad(5)
+$$
+上式表示$y=1$的预测函数为$h_{\omega}(x)$。在这里，假设因变量$y$服从伯努利分布，那么可以得到下列两个式子：
+
+$$
+\begin{aligned}
+p(y=1 | x) &= h_{\omega} (x)         \quad\qquad(6)\\
+p(y=0 | x) &= 1 - h_{\omega} (x)      \qquad(7)
+\end{aligned}
+$$
+而对于上面的两个表达式，通过观察，我们发现，可以将其合并为以下表达式：
+$$
+p(y | x) = h_{\omega} (x)^y (1-h_{\omega} (x))^{1-y} \qquad(8)
+$$
+根据上面的式子，给定一定的样本之后，我们可以构造出似然函数，然后可以使用极大似然估计MLE的思想来求解参数。但是，为了满足最小化风险理论，我们可以将MLE的思想转化为最小化风险化理论，最大化似然函数其实就等价于最小化负的似然函数。对于MLE，就是利用已知的样本分布，找到最有可能（即最大概率）导致这种分布的参数值；或者说是什么样的参数才能使我们观测到目前这组数据的概率最大。使用MLE推导LR的loss function的过程如下。
+首先，根据上面的假设，写出相应的极大似然函数（假定有$m$个样本）：
+$$
+\begin{aligned}
+L(\omega)&=  \prod_{i=1}^{m} p(y_i | x_i; \omega)  \\
+&=  \prod_{i=1}^{m} h_{\omega} (x_i)^{y_i} (1-h_{\omega} (x_i)^{1-y_i} \\
+\end{aligned}   \qquad(9)
+$$
+
+上述式子中的$\omega$及$x_i$均为向量，并未显示其转置。
+
+直接对上面的式子求导会不方便，因此，为了便于计算，我们可以对似然函数取对数，经过化简可以得到下式的推导结果：
+$$
+\begin{aligned}
+\log L(\omega)&= \sum_{i=1}^{m} \log \left [ (h_{\omega} (x_i)^{y_i} (1-h_{\omega} (x_i))^{1-y_i}) \right ] \\
+&= \sum_{i=1}^{m} \left [ y_i \log h_{\omega} (x_i) +  (1-y_i) \log(1-h_{\omega} (x_i)) \right ]  \\
+\end{aligned}  \qquad(10)
+$$
+
+因此，损失函数可以通过最小化负的似然函数得到，即下式：
+
+$$
+J(\omega) = - \frac{1}{m} \sum_{i=1}^m \left [ y_i \log h_{\omega}(x_i) + (1-y_i) \log(1-h_{\omega}(x_i)  \right ]   \qquad(11)
+$$
+
+在周志华版的机器学习中，将sigmiod函数代入$h_{\omega}(x_i)$，并使用ln代替log，上述公式表示为：
+
+$$
+\begin{aligned}
+J(\omega) &= - \frac{1}{m} \sum_{i=1}^m \left [ y_i \ln h_{\omega}(x_i) + (1-y_i) \ln(1-h_{\omega}(x_i)  \right ]\\
+&=- \frac{1}{m} \sum_{i=1}^m \left [ y_i\ln  \frac{1}{1+e^{-\omega x_i}}+(1-y_i)\ln \frac{e^{-\omega x_i}}{1+e^{-\omega x_i}}\right ]\\
+&=- \frac{1}{m} \sum_{i=1}^m \left [ \ln \frac{1}{1+e^{\omega x_i}} + y_i \ln \frac{1}{e^{-\omega x_i}}\right ]\\
+&= \frac{1}{m} \sum_{i=1}^m \left [ -y_iwx_i + \ln(1+e^{\omega x_i})\right ]
+\end{aligned}  \qquad(12)
+$$
+
+
+在某些资料上，还有另一种损失函数的表达形式，但本质是一样的，如下【推导见下面1.4】：
+$$
+J(\omega) = \frac{1}{m} \sum_{i=1}^m log(1 + e^{-y_i \omega x}) \qquad(13)
+$$
+
+
+
+
+
+## 1.3 梯度下降
+
+我们以梯度下降为例对逻辑回归进行求解，其迭代公式的推导过程如下：
+
+$$
+\begin{aligned}
+\frac{ \partial J(\omega)} {\partial \omega_j}&= -\frac{1}{m} \sum_{i}^{m} \left [ y_i(1 - h_{\omega}(x_i)) \cdot (-x_{i,j}) + (1 - y_i) h_{\omega} (x_i)  \cdot (x_{i,j}) \right ]\\
+& = - \frac{1}{m} \sum_{i}^{m}  (-y_i \cdot x_{i,j} + h_{\omega}(x_i) \cdot x_{i,j})  \\
+& = -\frac{1}{m} \sum_{i}^{m} (h_{\omega}(x_i) - y_i) x_{i,j}
+\end{aligned}  \qquad(14)
+$$
+
+上述中$x_{i,j}$表示第$i$个样本的第$j$个属性的取值。
+于是，$\omega$的更新方式为：
+
+$$
+\omega_{j+1} = \omega_j - \alpha \sum_{i=1}^{m} (h_{\omega}(x_i) - y_i) x_{x,j}
+$$
+
+对于随机梯度下降，每次只取一个样本，则$\omega$的更新方式为：
+
+$$
+\omega_{j+1} = \omega_j - \alpha (h_{\omega}(x)- y) x_{j}
+$$
+
+其中$x$为这个样本的特征值，$y$为这个样本的真实值，$x_j$为这个样本第$j$个属性的值。
+
+使用周志华版的损失函数更容易得出这个结论。
+
+## 1.4 另一种形式的损失函数及其梯度
+与上面相同，根据sigmoid函数，我们可以得出预测函数的表达式为：
+$$
+h_{\omega}(x) = g(\omega^Tx) = \frac{1}{1 + e^{-\omega^Tx}}
+$$
+上式表示$y=1$的预测函数为$h_{\omega}(x)$。
+但与上面不同，我们假设样本的分布为{-1,1}，则
+$$
+p(y=1 | x) = h_{\omega} (x)
+$$
+
+$$
+p(y=-1 | x) = 1 - h_{\omega} (x)
+$$
+对于sigmoid函数，有以下特性（简单推导一下就可以得到）：
+$$
+h(-x) = 1 - h(x)
+$$
+
+于是(14)(15)式可以表示为：
+$$
+p(y|x) = h_\omega(yx)
+$$
+
+同样，我们使用MLE作估计，
+$$
+\begin{aligned}
+L(\omega)&=  \prod_{i=1}^{m} p(y_i | x_i; \omega)  \\
+&=  \prod_{i=1}^{m} h_\omega(y_i x_i)\\
+&= \prod_{i=1}^{m} \frac{1}{1+e^{-y_iwx_i}}
+\end{aligned}
+$$
+
+对上式取对数及负值，得到损失为：
+$$
+\begin{aligned}
+-\log L(\omega)&= -\log \prod_{i=1}^{m} p(y_i | x_i; \omega)  \\
+&=  -\sum_{i=1}^{m} \log p(y_i | x_i; \omega)  \\
+&=  -\sum_{i=1}^{m} \log \frac{1}{1+e^{-y_iwx_i}}\\
+&=  \sum_{i=1}^{m} \log(1+e^{-y_iwx_i})\\
+\end{aligned}
+$$
+即对于每一个样本，损失函数为：
+$$
+L(\omega)=\log(1+e^{-y_iwx_i}) 
+$$
+对上式求梯度，容易得到：
+$$
+\begin{aligned}
+\frac{ \partial J(\omega)} {\partial \omega_j}&= \frac{-y_i x_i}{1+e^{y_i \omega x_i}}
+\end{aligned}
+$$
+
+
+
+
+# 2、FOBOS与RDA
+
+## 2.1 FOBOS基本原理
+FOBOS算法由John Duchi和Yoram Singer提出，是梯度下降的一个变种。
+与梯度下降不同，它将权重的更新分为2个步骤：
+$$
+\begin{aligned}
+W_{t+\frac{1}{2}}&=W_t-\eta_tG_t   \\n
+W_{t+1}&=\arg\min\{\frac{1}{2}\|W-W_{t+\frac{1}{2}}\|^2+\eta_{(t+\frac{1}{2})}\psi(W)\}
+\end{aligned}
+$$
+
+从上面的2个步骤可以看出：
+第一个步骤是一个标准的梯度下降。
+第二个步骤是对梯度下降的结果进行微调。这里可以分为2部分：（1）前半部分保证了微调发生在第一个步骤结果（取梯度下降结果）的附近。（2）后半部分用于处理正则化，产生稀疏性。
+
+** 根据次梯度理论的推断，可以得出$W_{(t+1)}$不仅仅与迭代前的状态$W_t$有关，而且与迭代后的$$相关**
+
+## 2.2 L1-FOBOS
+FOBOS在L1正则化条件下，特征权重的更新方式为：（推导过程暂略）
+$$
+\omega_{t+1,i}=sgn(\omega_{t,i}-\eta_tg_{t,i})max\{0,|\omega_{t,i}-\eta_tg_{t,i}|-\eta_{t+\frac{1}{2}}\lambda\}
+$$
+
+其中$g_{t,i}$为梯度在维度i上的取值
+
+## 2.3 RDA基本原理
+
+简单截断、TG、FOBOS都是建立在SGD基础上的一个变种，属于梯度下降类型的方法，这类方法的精度比较高，同时也能得到一定的稀疏性。而RDA是从另一个方面来求解，它的精度比FOBOS等略差，但它更有效的提升了稀疏性。
+
+在RDA中，特征权重的更新策略为：
+
+$$
+W_{t+1}=\arg\min\{\frac{1}{t}\sum_{r=1}^{t}<G^{r},W>+\psi(W)+\frac{\beta_t}{t}h(W)\}
+$$
+
+其中$<G^{r},W>$表示梯度$G^r$对W的积分平均值（积分中值）；$\psi(W)$为正则项；$h(W)$为一个辅助的严格的凸函数；${\beta_t|t\ge1}$是一个非负且非自减序列。
+
+## 2.4 L1-RDA
+在L1正则化条件下，RDA的各个维度的权重更新方式为：
+$$
+ \omega_{t+1,i} =
+\begin{cases}
+0,  & \text{if $|\overline g_{t,i}|<\lambda$} \\
+-(\frac{\sqrt{t}}{r}(\overline g_{t,i}-\lambda  sgn(\overline g_{t,i})), & \text{otherwise}  \\
+\end{cases}
+$$
+亦即当某个维度上的累积梯度平均值的绝对值 $|\overline g_{t,i}|$小于阈值$\lambda$时，该维度权重被置为0。
+
+
+# 3、FTRL
+理论及实验均证明，L1-FOBOS这类基于梯度下降的算法有比较高的精度，但L1-RDA却能在损失一定精度的情况下产生更好的稀疏性。
+把这二者的优点结合成一个算法，这就是FTRL算法的来源。
+## 3.1 从L1-FOBOS和L1-RDA推导FTRL
+
+我们令$\eta_{t+\frac{1}{2}}=\eta_t=\Theta(\frac{1}{\sqrt{t}})$是一个非增正序列，同时代入L1正则项，得到L1-FOBOS的形式如下：
+$$
+\begin{aligned}
+W_{t+\frac{1}{2}}&=W_t-\eta_tG_t \\
+W_{t+1}&=\arg\min\{\frac{1}{2}\|W-W_{t+\frac{1}{2}}\|^2+\eta_{t}\lambda\|W\|_1\}
+\end{aligned}
+$$
+
+将这2个公式合并到一起，得到L1-FOBOS的形式如下：
+$$
+W_{t+1}=\arg\min\{\frac{1}{2}\|W-W_t+\eta_tG_t\|^2+\eta_{t}\lambda\|W\|_1\}
+$$
+
+将上式分解为N个独立的维度进行最优化求解：
+$$
+\begin{aligned}
+w_i&=\arg\min\{\frac{1}{2}\|w_i-w_{t,i}+\eta_tg_{t,i}\|^2+\eta_{t}\lambda|w_{t,i}|_1\} \\
+&=\arg\min\{\frac{1}{2}(w_i-w_{t,i})^2+\frac{1}{2}(\eta_t g_{t,i})^2+w_i\eta_tg_{t,i}-w_{t,i}\eta_tg_{t,i}+\eta_t\lambda|w_i|\}\\
+&=\arg\min\{w_ig_{t,i}+\lambda|w_i|+\frac{1}{2\eta_t}(w_i-w_{t,i})^2+|\frac{\eta_t}{2}g_{t,i}^2-w_{t,i}g_{t,i}|\}
+\end{aligned} 
+$$
+
+* 上述推导的最后一步是通过除以$\eta_t$得到的。
+由于上式中的最后一项$|\frac{\eta_t}{2}g_{t,i}^2-w_{t,i}g_{t,i}|$是一个与$w_i$无关的量，因此上式可简化为：
+$$
+w_i=\arg\min\{w_ig_{t,i}+\lambda|w_i|+\frac{1}{2\eta_t}(w_i-w_{t,i})^2\}
+$$
+把N个独立优化的维度重新合并，L1-FOBOS可写成以下形式：
+$$
+W_{t+1}=\arg\min\{G_tW+\lambda\|W\|_1+\frac{1}{2\eta_t}\|W-W_t\|_2^2\}
+$$
+
+另一方面，L1-RDA可以表达为：
+$$
+W_{t+1}=\arg\min\{G_{(1:t)}W+t\lambda\|W\|_1+\frac{1}{2\eta_t}\|W-0\|_2^2\}
+$$
+其中$G_{(1:t)}=\sum_{s=1}{t}G_s$。
+我们令$\sigma_s=\frac{1}{\eta_s}-\frac{1}{\eta_{s-1}}$，可以得到$\sigma_{(1:t)}=\frac{1}{\eta_t}$。那么L1-FOBOS与L1-RDA可以写为以下格式：
+$$
+\begin{aligned}
+W_{t+1}&=\arg\min\{G_tW+\lambda\|W\|_1+\frac{1}{2}\sigma_{(1:t)}\|W-W_t\|_2^2\}\\
+W_{t+1}&=\arg\min\{G_{(1:t)}W+t\lambda\|W\|_1+\frac{1}{2}\sigma_{(1:t)}\|W-0\|_2^2\}
+\end{aligned}
+$$
+
+比较以上2式的区别：
+* （1）L1-FOBOS考虑的是当前梯度的影响，L1-RDA则考虑了累积影响。
+* （2）L1-FOBOS限制$W_{t+1}$不能离$W_t$太远，而L1-RDA的W则不能离0太远，因此后者更容易产生稀疏性。
+
+
+## 3.2 FTRL权重更新的最终形式
+
+在google2010公布的理论文章中并没有使用L2正则项，但在2013年公布工程实施方案时引入了L2。
+因此，综合上述的L1-FOBOS及L1-RDA，FTRL算法的权重更新方式为：
+$$
+W_{t+1}=\arg\min\{G_{(1:t)}W+\lambda_1\|W\|_1+\lambda_2\|W\|_2^2+\frac{1}{2}\sum_{s=1}^t(\sigma_s\|W-W_s\|_2^2)\}
+$$
+将上式展开，得到
+$$
+W_{t+1}=\arg\min\{(G_{(1:t)}-\sum_{s=1}^t\sigma_sW_s)W+\lambda_1\|W\|_1+\frac{1}{2}(\lambda_2+\sum_{s=1}^t\sigma_s)\|W\|^2+\frac{1}{2}\sum_{s=1}^{t}\sigma_s\|W_s\|_2^2\}
+$$
+由于上式的最后一项相对于W来说是一个常数，同时令$Z_t=G_{(1:t)}-\sum_{(s=1)}^t\sigma_sW_s$，上式可表示为：
+$$
+W_{t+1}=\arg\min\{Z_tW+\lambda_1\|W\|_1+\frac{1}{2}(\lambda_2+\sum_{s=1}^t\sigma_s)\|W\|^2\}
+$$
+各个维度可以独立表示为：
+$$
+w_{i+1}=\arg\min\{z_{t,i}w_i+\lambda_1|w_i|+\frac{1}{2}(\lambda_2+\sum_{s=1}^{t}\sigma_s)w_i^2\}
+$$
+
+使用与L1-FOBOS相同的分析方法可以得到：
+$$
+\omega_{t+1,i} =
+\begin{cases}
+0,  & \text{if $|z_i|<\lambda_1$} \\
+-(\lambda_2+\sum_{s=1}^t\sigma_s)^{-1}(z_{t,i}-sgn(z_{t,i})\lambda_1), & \text{otherwise}  \\
+\end{cases}
+$$
+
+根据上面的定义:
+$$
+\sigma_{(1:t)}=\sum_{s=1}^t\sigma_s=\frac{1}{\eta_t}
+$$
+
+我们使用下面介绍的学习率，以及令$n_i=\sum g_i^2$，则可以得到FTRL的最终形式：
+$$
+ \omega_i =
+\begin{cases}
+0,  & \text{if $|z_i|<\lambda_1$} \\
+-(\frac{\beta+\sqrt{n_I}}{\alpha}+\lambda_2)^{-1}(z_i-sgn(z_i)\lambda_1), & \text{otherwise}  \\
+\end{cases}
+$$
+
+## 3.3 学习率
+1、per-coordinate learning rate
+在FTRL中，学习率的定义如下：
+$$
+\eta_{t,i}=\frac{\alpha}{\beta+\sqrt{\sum_{s=1}^tg_{s,i}^2}}
+$$
+其中$\alpha\beta$是自定义的参数。
+
+在一般梯度下降算法中，使用的是一个全局的学习率策略：$\eta_t=\frac{1}{\sqrt{t}}$。这个策略保证了学习率是一个正的非增序列，这个值对于每一个特征都是一样的。
+
+考虑一个极端的情况，我们有多个稀疏特征，其中一个特征$x_1$出现非常频繁，而另一个特征$x_2$很少出现。比如第一个样本，$x_1$和$x_2$同时出现了，但接下来的99个样本都只出现了$x_1$，然后第100个样本$x_2$又出来了，由于此时的学习率为$\frac{1}{\sqrt{100}}$，远小于第一个样的影响了。也就是说假如第一个样本是正样本，第10个样本是负样本，此时由于学习率的不同，模型会认为$x_2$会是一个有用的正相关的特征，即$\omega>0$。但事实上，这个特征只出现了2次，而且一正一负，因此这应该是一个无用的特征，即$\omega=0$。
+
+在FTRL中，我们会使用一个特征的累积梯度，由于中间的99个数据没有这个特征，因此其对应的梯度为0，因此第二次的负样本对应的学习率只是略小于第一个正样本。
+
+## 3.4 工程实现计算过程
+###  3.4.1 一些定义
+对于每一个样本，我们计算以下数值。
+
+（1）$p_t$
+
+使用当前的$\omega$代入sigmoid函数得出的预测值，即：
+$$
+p=\frac{1}{1+e^{-(\sum_{i=1}^n\omega_ix_i)}}
+$$
+
+（2）$g_i$
+
+损失函数在某一个维度上的梯度，对于逻辑回归而言：
+$$
+g_i=(p-y)x_i
+$$
+其中y为当前样本的实际值，即0或者1。
+
+（3）$n_i$
+
+这是该维度梯度$g_i^2$的累积值，即：
+$$
+n_i=n_i+g_i^2
+$$
+
+（4）$\eta_i$
+
+这是该维度的学习率，它与累积梯度有关。定义为：
+$$
+\eta_i=\frac{\alpha}{\beta+\sqrt{\sum_{s=1}^t(g_i^s)^2}}=\frac{\alpha}{\beta+\sqrt{n_i}}
+$$
+其中$\alpha\beta$为用户定义的2个参数。
+
+（5）$\sigma_i$
+
+$\sigma_i$是一个中间计算值，没有实际含义，其定义为：
+$$
+\sigma_i=\frac{1}{\eta_{t,i}}-\frac{1}{\eta_{t-1,i}}=\frac{1}{\alpha}(\sqrt{n_i+g_i^2}-\sqrt{n_i})
+$$
+
+（6）$z_i$
+
+$z_i$也是一个辅助计算的中间值，它的定义为：
+$$
+z_{t,i}=g^{(1:t)}-\sum_{s=1}^t{\sigma_{s,i}\omega_{s,i}}
+$$
+于是$z_i$的更新为：
+$$
+z_t-z_{t-1}=g_t-\sigma_{t}\omega_{t}
+$$
+即：
+$$
+z_i=z_i+g_t-\sigma_i\omega_i
+$$
+
+
+### 3.4.2 FTRL算法
+
+（1）设定以下4个输入参数，这些参数根据经验而定，可以参考以下数据：
+$$
+\alpha=0.1,\beta=1,\lambda_1=1,\lambda_2=1
+$$
+
+（2）初始化以下数值：
+$$
+z_i=0,n_i=0
+$$
+
+（3）对于**每一个样本**的所带的**每一个维度**,更新$\omega$
+$$
+ \omega_i =
+\begin{cases}
+0,  & \text{if $|z_i|<\lambda_1$} \\
+-(\frac{\beta+\sqrt{n_I}}{\alpha}+\lambda_2)^{-1}(z_i-sgn(z_i)\lambda_1), & \text{otherwise}  \\
+\end{cases}
+$$
+
+（4）使用上面更新后的$\omega$，预测**这个样本**的值，即代入sigmoid函数计算$p_t$
+$$
+p=\frac{1}{1+e^{-(\sum_{i=1}^n\omega_ix_i)}}
+$$
+
+（5）对于**每一个样本**的**每一个维度**，更新$g_i,\sigma_i,z_i,n_i$，即上面所说的：
+$$
+\begin{aligned}
+g_i&=(p-y)x_i \\
+\sigma_i&=\frac{1}{\alpha}(\sqrt{n_i+g_i^2}-\sqrt{n_i})\\
+z_i&=z_i+g_t-\sigma_i\omega_i\\
+n_i&=n_i+g_i^2
+\end{aligned}
+$$
+
+### 3.4.3 特征的独立性
+如果特征是非独立的，会导致特征的权重不符合预期。
+比如，有2个特征A和B，然后加了一个组合标签A&B，假如A和B都是和label非常正相关的，A&B效果更好。但结果会发现A&B这个标签的权重值可能还不如A或者B的权重高。
+这是因为，带了A&B标签的，必然带A或者B，大概率被预测成高概率值，而LR梯度为：
+$$
+(p-y)x_i
+$$
+对于正样本，$y=1$，则梯度并不大，所以A&B提升并不大；而对于负样本，$y=0$，则梯度非常大，导致惩罚很大，权重降低很多。
+
+所以最终结果A和B的权重都可能比A&B要大，但对于带A&B标签的用户来说，他由于同时带3个特征，所以预测概率值还是比较高的。
+
+当然最好的办法是尽量避免这种关联性太强的特征。
+
+# 4、FTRL的工程应用
+这里只列出了google提供的一些建议，我们自身的工程应用并不包含在内。
+
+（1）减少样本的数量
+ * Poisson Inclusion：以p的概率接受样本
+ * Bloom Filter Inclusion：只有当特征出现次数达到一定数量后，特征才会被加入模型
+
+（2）使用更少的位来进行浮点数编码
+一般而言，特征对应的$\omega$在(-2,2)之间，所以我们可以将32，或者64位的浮点数编码规则改为q2.13编码方式，即2位整数，1位小数点，13位小数。
+
+（3）多个类似的模型
+把多个同类型/相似的模型放在一起保存，可以不需要记录多个key，只需要记录一次Key，以及各个模型中的$\omega$。这可以节省内存、带宽、CPU、存储。
+
+（4）只保存一个模型
+ 在上面的基础上更进一步，所有模型共用一份$\omega$，以及以一个bit来记录本模型有哪些特征。当模型更新某个$\omega$后，取它与之前那个值的平均值。
+与共用一个模型对比，好处是记录了这个模型有哪些有效特征，共用模型就无法区分了。
+
+（5）近似计算学习率
+只使用正样本P与负样本数据N来近似估计梯度的平方和，前提是假设特征有类似的分布。
+$$
+\sum{g_i^2}=\frac{PN}{P+N}
+$$
+
+（6）减少负样本数量
+减少负样本数量，然后在训练时弥补其损失。
